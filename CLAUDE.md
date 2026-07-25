@@ -52,11 +52,21 @@ default severity.
 
 ## Release process
 
-Bump `version` in `.claude-plugin/plugin.json` (semver) as part of the PR
-that ships the change — per Claude Code's plugin versioning rules, pushing
-commits without bumping `version` has no effect on `claude plugin update`
-(it compares the version string as its cache key and no-ops on a match).
-The marketplace-path statusline picks up every commit to `main` on its own
-regardless of the version bump (see above); bumping `version` matters for
-the *installed plugin* copy (relevant if this plugin ever ships skills,
-commands, or hooks that need the standard plugin update flow).
+`.github/workflows/bump-version.yml` (the `Release` workflow) handles
+versioning automatically: every push to `main` (except the release bot's own
+`chore(release):` commits) runs `scripts/bump-version.sh`, which bumps
+`.claude-plugin/plugin.json`'s `version` field, prepends a section to
+`CHANGELOG.md`, commits, tags the result `cc-statusline--v<semver>`, and
+publishes a GitHub Release from that tag. Never hand-edit the `version`
+field — the workflow owns it, and any manual edit is overwritten by the next
+push.
+
+The bump level is derived from Conventional Commit subjects since the last
+`cc-statusline--v*` tag: a `!` after type/scope or a `BREAKING CHANGE:` body
+trailer bumps major, any `feat:` subject (with no breaking change present)
+bumps minor, everything else bumps patch — every push releases at least a
+patch, mirroring the identical pattern already running in production on the
+user's `devcycle` plugin repo. This makes PR titles load-bearing beyond
+`validate.yml`'s existing Conventional Commit check (`pr-title` job): a
+malformed title still fails that check, but a correctly-typed title is also
+what determines whether the next release is a patch, minor, or major bump.
