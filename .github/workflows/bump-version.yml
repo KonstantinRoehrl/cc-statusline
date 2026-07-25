@@ -1,0 +1,49 @@
+name: Release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+jobs:
+  bump:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Bump version and changelog
+        id: bump
+        run: echo "version=$(scripts/bump-version.sh)" >> "$GITHUB_OUTPUT"
+      - name: Commit, tag, release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.bump.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/cc-statusline--v$V" >/dev/null; then
+            echo "tag cc-statusline--v$V already exists — nothing to release"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .claude-plugin/plugin.json CHANGELOG.md
+          git commit -m "chore(release): v$V [skip ci]"
+          # Branch first, tag only after the branch push lands: a tag pushed before a
+          # failed branch push leaves an orphan tag that blocks every later release.
+          n=0
+          until git push origin main; do
+            n=$((n+1))
+            if [ "$n" -ge 3 ]; then
+              echo "branch push failed after $n rebase retries — manual release repair needed"
+              exit 1
+            fi
+            git pull --rebase origin main
+          done
+          git tag "cc-statusline--v$V"
+          git push origin "cc-statusline--v$V"
+          gh release create "cc-statusline--v$V" --title "cc-statusline v$V" --notes-file .release-notes.md
