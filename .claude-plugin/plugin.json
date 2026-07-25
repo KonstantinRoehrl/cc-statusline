@@ -1,6 +1,6 @@
 {
   "name": "cc-statusline",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A 4-line ANSI dashboard statusline for Claude Code: model+effort, folder/branch, context and cache-hit meters, rolling 5h and weekly rate-limit meters with reset clocks, and session line diff.",
   "author": {
     "name": "Konstantin Röhrl",
