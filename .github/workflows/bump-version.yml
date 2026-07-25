@@ -19,7 +19,9 @@ jobs:
           fetch-depth: 0
       - name: Bump version and changelog
         id: bump
-        run: echo "version=$(scripts/bump-version.sh)" >> "$GITHUB_OUTPUT"
+        run: |
+          new_version="$(scripts/bump-version.sh)"
+          echo "version=$new_version" >> "$GITHUB_OUTPUT"
       - name: Commit, tag, release
         env:
           GH_TOKEN: ${{ github.token }}
