@@ -47,17 +47,25 @@ yourself (merge it in, don't overwrite the rest of the file):
 {
   "statusLine": {
     "type": "command",
-    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/statusline.sh",
+    "command": "~/.claude/plugins/marketplaces/cc-statusline/scripts/statusline.sh",
     "padding": 0,
     "refreshInterval": 30
   }
 }
 ```
 
-`${CLAUDE_PLUGIN_ROOT}` is substituted by Claude Code at runtime to the
-plugin's installed directory, so the path keeps working across
-`autoUpdate`-driven updates. Start a new session (or run `/statusline`) to
-pick up the change.
+Point at the **marketplace clone** path, not the versioned plugin cache path
+(`~/.claude/plugins/cache/cc-statusline/cc-statusline/<version>/...`) and not
+`${CLAUDE_PLUGIN_ROOT}` — that variable is only substituted inside a plugin's
+own manifest-defined commands (hooks, MCP servers), not in your personal
+`statusLine.command`, and even there it re-resolves to a version-pinned
+directory that changes (and gets garbage-collected ~14 days later) on every
+update. The marketplace clone path stays fixed forever; `claude plugin
+marketplace update` (which `autoUpdate: true` on the marketplace entry
+triggers automatically) `git pull`s new commits into that same directory in
+place, so the statusline picks up changes without you touching
+`settings.json` again. Start a new session (or run `/statusline`) to pick up
+the initial change.
 
 ## How it works
 

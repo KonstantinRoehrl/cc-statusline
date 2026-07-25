@@ -32,9 +32,20 @@ default severity.
   cannot set it. Don't add a `settings.json`-in-plugin key expecting it to
   auto-configure the user's statusline — document the manual snippet in
   README.md instead (it already is).
-- Reference the script's own directory via `${CLAUDE_PLUGIN_ROOT}` in any
-  install instructions, never a hardcoded path — that's what keeps
-  `autoUpdate` installs working after every update.
+- `${CLAUDE_PLUGIN_ROOT}` does **not** work for this purpose — it's only
+  substituted inside a plugin's own manifest-defined commands (hooks, MCP
+  servers), not in a user's personal `statusLine.command`, and even there
+  it resolves to the version-pinned plugin cache directory
+  (`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/...`), which
+  changes on every update and is garbage-collected ~14 days later. The
+  README instead points users at the **marketplace clone** path
+  (`~/.claude/plugins/marketplaces/cc-statusline/scripts/statusline.sh`),
+  which `claude plugin marketplace update` (auto-triggered by
+  `autoUpdate: true` on the marketplace entry) refreshes in place via
+  `git pull` — same absolute path, forever. Verified empirically
+  2026-07-25: bumping `plugin.json` version and running `claude plugin
+  marketplace update` left the marketplace path unchanged while the cache
+  path gained a brand-new version-numbered sibling directory.
 - `fmt_clock()` uses BSD `date -r <epoch>` (macOS). Any Linux compatibility
   fix belongs behind a `date -r ... || date -d @...` fallback in the
   script itself, not just a README note, if/when that's prioritized.
@@ -42,5 +53,10 @@ default severity.
 ## Release process
 
 Bump `version` in `.claude-plugin/plugin.json` (semver) as part of the PR
-that ships the change; `autoUpdate: true` on installs means marketplace
-users pick up `dev`→`main` merges without a manual step on their end.
+that ships the change — per Claude Code's plugin versioning rules, pushing
+commits without bumping `version` has no effect on `claude plugin update`
+(it compares the version string as its cache key and no-ops on a match).
+The marketplace-path statusline picks up every commit to `main` on its own
+regardless of the version bump (see above); bumping `version` matters for
+the *installed plugin* copy (relevant if this plugin ever ships skills,
+commands, or hooks that need the standard plugin update flow).
