@@ -86,6 +86,17 @@ shellcheck -S warning scripts/statusline.sh   # lint (info-level SC2016 hits on
 echo '{"model":{"display_name":"Claude"}}' | scripts/statusline.sh   # smoke test
 ```
 
+## Releases
+
+Every push to `main` is tagged `cc-statusline--v<semver>` with an
+auto-generated GitHub Release and `CHANGELOG.md` entry — see
+`.github/workflows/bump-version.yml`. This release trail is for
+changelog/version visibility only; it is not what keeps your installed
+statusline script current. That happens independently, via the
+marketplace-clone auto-pull described under Install above (`autoUpdate:
+true` + `claude plugin marketplace update`), regardless of the `version`
+field.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
