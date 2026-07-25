@@ -1,0 +1,12 @@
+{
+  "name": "cc-statusline",
+  "description": "Home of the cc-statusline plugin: a 4-line ANSI dashboard statusline for Claude Code.",
+  "owner": { "name": "Konstantin Röhrl", "url": "https://github.com/KonstantinRoehrl" },
+  "plugins": [
+    {
+      "name": "cc-statusline",
+      "source": "./",
+      "description": "A 4-line ANSI dashboard statusline: model+effort, folder/branch, context and cache-hit meters, rate-limit meters with reset clocks, session line diff."
+    }
+  ]
+}

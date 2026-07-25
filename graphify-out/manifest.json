@@ -1,0 +1,17 @@
+{
+  ".claude-plugin/marketplace.json": {
+    "mtime": 1784964170.6134565,
+    "ast_hash": "3cf5c74220b8f2b28604ffd28d9d64ba",
+    "semantic_hash": "3cf5c74220b8f2b28604ffd28d9d64ba"
+  },
+  ".claude-plugin/plugin.json": {
+    "mtime": 1784964167.523515,
+    "ast_hash": "c34544b39e9dc0339805e01b70184e7f",
+    "semantic_hash": "c34544b39e9dc0339805e01b70184e7f"
+  },
+  "scripts/statusline.sh": {
+    "mtime": 1784964215.3757162,
+    "ast_hash": "80d03d4857ac2c8fa0c3fffe29f57587",
+    "semantic_hash": "80d03d4857ac2c8fa0c3fffe29f57587"
+  }
+}

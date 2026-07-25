@@ -1,0 +1,161 @@
+{
+  "communities": {
+    "0": [
+      "scripts_statusline",
+      "scripts_statusline_bar",
+      "scripts_statusline_fmt_days_short",
+      "scripts_statusline_grad_rgb",
+      "scripts_statusline_gradient_better",
+      "scripts_statusline_gradient_worse",
+      "scripts_statusline_lerp",
+      "scripts_statusline_mseg",
+      "scripts_statusline_mseg_na",
+      "scripts_statusline_pct4",
+      "scripts_statusline_repeat",
+      "scripts_statusline_sh__entry"
+    ],
+    "1": [
+      "claude_testing_verification",
+      "github_dependabot_actions_updates",
+      "github_workflows_gitleaks_gitleaks",
+      "github_workflows_validate_validate",
+      "readme_development",
+      "readme_how_it_works",
+      "scripts_statusline_j",
+      "scripts_statusline_script"
+    ],
+    "2": [
+      "claude_cc_statusline_plugin",
+      "claude_plugin_marketplace_manifest",
+      "claude_plugin_plugin_manifest",
+      "claude_release_process",
+      "github_workflows_validate_pr_title",
+      "readme_dashboard",
+      "readme_install"
+    ],
+    "3": [
+      "claude_constraints",
+      "readme_requirements",
+      "scripts_statusline_fmt_clock"
+    ]
+  },
+  "cohesion": {
+    "0": 0.16666666666666666,
+    "1": 0.35714285714285715,
+    "2": 0.2857142857142857,
+    "3": 0.6666666666666666
+  },
+  "gods": [
+    {
+      "id": "scripts_statusline_script",
+      "label": "statusline.sh Script",
+      "degree": 8
+    },
+    {
+      "id": "github_workflows_validate_validate",
+      "label": "Validate CI Job",
+      "degree": 5
+    },
+    {
+      "id": "scripts_statusline_fmt_clock",
+      "label": "fmt_clock()",
+      "degree": 4
+    },
+    {
+      "id": "claude_cc_statusline_plugin",
+      "label": "cc-statusline Plugin Overview",
+      "degree": 4
+    },
+    {
+      "id": "claude_testing_verification",
+      "label": "Testing Verification Procedure",
+      "degree": 4
+    },
+    {
+      "id": "scripts_statusline_j",
+      "label": "j()",
+      "degree": 3
+    },
+    {
+      "id": "claude_plugin_plugin_manifest",
+      "label": "plugin.json Manifest",
+      "degree": 3
+    },
+    {
+      "id": "claude_plugin_marketplace_manifest",
+      "label": "marketplace.json Manifest",
+      "degree": 3
+    },
+    {
+      "id": "claude_constraints",
+      "label": "Plugin Constraints to Respect",
+      "degree": 2
+    },
+    {
+      "id": "claude_release_process",
+      "label": "Release Process",
+      "degree": 2
+    }
+  ],
+  "surprises": [
+    {
+      "source": "4-line ANSI Dashboard Statusline",
+      "target": "statusline.sh Script",
+      "source_files": [
+        "README.md",
+        "scripts/statusline.sh"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (doc \u2194 code); connects across different repos/directories; bridges separate communities; peripheral node `4-line ANSI Dashboard Statusline` unexpectedly reaches hub `statusline.sh Script`"
+    },
+    {
+      "source": "cc-statusline Plugin Overview",
+      "target": "4-line ANSI Dashboard Statusline",
+      "source_files": [
+        "CLAUDE.md",
+        "README.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "cc-statusline Plugin Overview",
+      "target": "statusline.sh Script",
+      "source_files": [
+        "CLAUDE.md",
+        "scripts/statusline.sh"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "crosses file types (doc \u2194 code); connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Validate CI Job",
+      "target": "Testing Verification Procedure",
+      "source_files": [
+        ".github/workflows/validate.yml",
+        "CLAUDE.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "Development Commands",
+      "target": "Testing Verification Procedure",
+      "source_files": [
+        "README.md",
+        "CLAUDE.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    }
+  ],
+  "tokens": {
+    "input": 31183,
+    "output": 8912
+  }
+}

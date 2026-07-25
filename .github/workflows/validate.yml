@@ -1,0 +1,41 @@
+name: Validate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Syntax check
+        run: bash -n scripts/statusline.sh
+      - name: Shellcheck (warning severity and above)
+        run: shellcheck -S warning scripts/statusline.sh
+      - name: Smoke test
+        run: |
+          out="$(echo '{"model":{"display_name":"Claude"}}' | scripts/statusline.sh)"
+          lines="$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+          [ "$lines" -eq 4 ] || { echo "expected 4 output lines, got $lines"; exit 1; }
+      - name: Plugin manifests are valid JSON
+        run: |
+          jq empty .claude-plugin/plugin.json
+          jq empty .claude-plugin/marketplace.json
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR title must be a Conventional Commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "$TITLE" | grep -qE '^(feat|fix|perf|docs|chore|ci|refactor|style|test|build)(\([a-z0-9-]+\))?!?: .+' || {
+            echo "PR title '$TITLE' is not a Conventional Commit."
+            echo "The squash-merge subject drives the release version bump; a malformed title ships no release."
+            exit 1
+          }

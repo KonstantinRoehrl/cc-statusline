@@ -1,0 +1,898 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "three_step_verification_procedure",
+        "label": "Shared bash -n / shellcheck / smoke-test Verification Procedure",
+        "nodes": [
+          "claude_testing_verification",
+          "readme_development",
+          "github_workflows_validate_validate"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 0.9,
+        "source_file": ".github/workflows/validate.yml"
+      },
+      {
+        "id": "plugin_distribution_package",
+        "label": "Plugin Distribution Package (manifests wrapping statusline.sh)",
+        "nodes": [
+          "claude_cc_statusline_plugin",
+          "claude_plugin_plugin_manifest",
+          "claude_plugin_marketplace_manifest",
+          "scripts_statusline_script"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 0.85,
+        "source_file": "CLAUDE.md"
+      },
+      {
+        "id": "ci_hardening_setup",
+        "label": "CI Hardening Setup (validation, secret scan, dependency updates)",
+        "nodes": [
+          "github_workflows_validate_validate",
+          "github_workflows_gitleaks_gitleaks",
+          "github_dependabot_actions_updates"
+        ],
+        "relation": "participate_in",
+        "confidence": "INFERRED",
+        "confidence_score": 0.75,
+        "source_file": ".github/dependabot.yml"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "label": "statusline.sh",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "statusline.sh",
+      "id": "scripts_statusline",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "statusline.sh script",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "statusline.sh script",
+      "id": "scripts_statusline_sh__entry",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "j()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L19",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "j()",
+      "id": "scripts_statusline_j",
+      "community_name": "Testing and CI Checks"
+    },
+    {
+      "label": "lerp()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L36",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "lerp()",
+      "id": "scripts_statusline_lerp",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "grad_rgb()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L39",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "grad_rgb()",
+      "id": "scripts_statusline_grad_rgb",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "gradient_worse()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L52",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "gradient_worse()",
+      "id": "scripts_statusline_gradient_worse",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "gradient_better()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L62",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "gradient_better()",
+      "id": "scripts_statusline_gradient_better",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "repeat()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L71",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "repeat()",
+      "id": "scripts_statusline_repeat",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "bar()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L79",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "bar()",
+      "id": "scripts_statusline_bar",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "fmt_days_short()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L91",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "fmt_days_short()",
+      "id": "scripts_statusline_fmt_days_short",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "fmt_clock()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L100",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "fmt_clock()",
+      "id": "scripts_statusline_fmt_clock",
+      "community_name": "Platform Constraints and Requirements"
+    },
+    {
+      "label": "pct4()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L146",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "pct4()",
+      "id": "scripts_statusline_pct4",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "mseg()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L149",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "mseg()",
+      "id": "scripts_statusline_mseg",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "mseg_na()",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L154",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "mseg_na()",
+      "id": "scripts_statusline_mseg_na",
+      "community_name": "Statusline Rendering Helpers"
+    },
+    {
+      "label": "cc-statusline Plugin Overview",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 2,
+      "norm_label": "cc-statusline plugin overview",
+      "id": "claude_cc_statusline_plugin",
+      "community_name": "Plugin Packaging and Release"
+    },
+    {
+      "label": "Testing Verification Procedure",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 1,
+      "norm_label": "testing verification procedure",
+      "id": "claude_testing_verification",
+      "community_name": "Testing and CI Checks"
+    },
+    {
+      "label": "Plugin Constraints to Respect",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 3,
+      "norm_label": "plugin constraints to respect",
+      "id": "claude_constraints",
+      "community_name": "Platform Constraints and Requirements"
+    },
+    {
+      "label": "Release Process",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 2,
+      "norm_label": "release process",
+      "id": "claude_release_process",
+      "community_name": "Plugin Packaging and Release"
+    },
+    {
+      "label": "4-line ANSI Dashboard Statusline",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 2,
+      "norm_label": "4-line ansi dashboard statusline",
+      "id": "readme_dashboard",
+      "community_name": "Plugin Packaging and Release"
+    },
+    {
+      "label": "Requirements (jq, true-color, BSD date)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 3,
+      "norm_label": "requirements (jq, true-color, bsd date)",
+      "id": "readme_requirements",
+      "community_name": "Platform Constraints and Requirements"
+    },
+    {
+      "label": "Install Instructions",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 2,
+      "norm_label": "install instructions",
+      "id": "readme_install",
+      "community_name": "Plugin Packaging and Release"
+    },
+    {
+      "label": "How It Works (stdin JSON payload flow)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 1,
+      "norm_label": "how it works (stdin json payload flow)",
+      "id": "readme_how_it_works",
+      "community_name": "Testing and CI Checks"
+    },
+    {
+      "label": "Development Commands",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 1,
+      "norm_label": "development commands",
+      "id": "readme_development",
+      "community_name": "Testing and CI Checks"
+    },
+    {
+      "label": "statusline.sh Script",
+      "file_type": "code",
+      "source_file": "scripts/statusline.sh",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 1,
+      "norm_label": "statusline.sh script",
+      "id": "scripts_statusline_script",
+      "community_name": "Testing and CI Checks"
+    },
+    {
+      "label": "plugin.json Manifest",
+      "file_type": "code",
+      "source_file": ".claude-plugin/plugin.json",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 2,
+      "norm_label": "plugin.json manifest",
+      "id": "claude_plugin_plugin_manifest",
+      "community_name": "Plugin Packaging and Release"
+    },
+    {
+      "label": "marketplace.json Manifest",
+      "file_type": "code",
+      "source_file": ".claude-plugin/marketplace.json",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 2,
+      "norm_label": "marketplace.json manifest",
+      "id": "claude_plugin_marketplace_manifest",
+      "community_name": "Plugin Packaging and Release"
+    },
+    {
+      "label": "Validate CI Job",
+      "file_type": "code",
+      "source_file": ".github/workflows/validate.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 1,
+      "norm_label": "validate ci job",
+      "id": "github_workflows_validate_validate",
+      "community_name": "Testing and CI Checks"
+    },
+    {
+      "label": "PR Title Conventional Commit Check Job",
+      "file_type": "code",
+      "source_file": ".github/workflows/validate.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 2,
+      "norm_label": "pr title conventional commit check job",
+      "id": "github_workflows_validate_pr_title",
+      "community_name": "Plugin Packaging and Release"
+    },
+    {
+      "label": "Gitleaks Secret Scan Job",
+      "file_type": "code",
+      "source_file": ".github/workflows/gitleaks.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 1,
+      "norm_label": "gitleaks secret scan job",
+      "id": "github_workflows_gitleaks_gitleaks",
+      "community_name": "Testing and CI Checks"
+    },
+    {
+      "label": "Dependabot GitHub Actions Updates",
+      "file_type": "code",
+      "source_file": ".github/dependabot.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 1,
+      "norm_label": "dependabot github actions updates",
+      "id": "github_dependabot_actions_updates",
+      "community_name": "Testing and CI Checks"
+    }
+  ],
+  "links": [
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L79",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_bar"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L100",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_fmt_clock"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L91",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_fmt_days_short"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L39",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_grad_rgb"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L62",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_gradient_better"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L52",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_gradient_worse"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_j"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_lerp"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L149",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_mseg"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L154",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_mseg_na"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L146",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_pct4"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L71",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_repeat"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/statusline.sh",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_statusline",
+      "target": "scripts_statusline_sh__entry"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.95,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_testing_verification",
+      "target": "scripts_statusline_j"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "scripts_statusline_script",
+      "target": "scripts_statusline_j"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.95,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_constraints",
+      "target": "scripts_statusline_fmt_clock"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.95,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "readme_requirements",
+      "target": "scripts_statusline_fmt_clock"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "scripts_statusline_script",
+      "target": "scripts_statusline_fmt_clock"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_cc_statusline_plugin",
+      "target": "claude_plugin_marketplace_manifest"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_cc_statusline_plugin",
+      "target": "claude_plugin_plugin_manifest"
+    },
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 0.8,
+      "source": "claude_cc_statusline_plugin",
+      "target": "readme_dashboard"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_cc_statusline_plugin",
+      "target": "scripts_statusline_script"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_testing_verification",
+      "target": "scripts_statusline_script"
+    },
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": ".github/workflows/validate.yml",
+      "source_location": null,
+      "weight": 0.9,
+      "source": "github_workflows_validate_validate",
+      "target": "claude_testing_verification"
+    },
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 0.9,
+      "source": "readme_development",
+      "target": "claude_testing_verification"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 0.7,
+      "source": "claude_constraints",
+      "target": "readme_install"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_release_process",
+      "target": "claude_plugin_plugin_manifest"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": ".github/workflows/validate.yml",
+      "source_location": null,
+      "weight": 0.8,
+      "source": "github_workflows_validate_pr_title",
+      "target": "claude_release_process"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 0.7,
+      "source": "readme_dashboard",
+      "target": "scripts_statusline_script"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 0.8,
+      "source": "readme_install",
+      "target": "claude_plugin_marketplace_manifest"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "readme_how_it_works",
+      "target": "scripts_statusline_script"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "readme_development",
+      "target": "scripts_statusline_script"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".github/workflows/validate.yml",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "github_workflows_validate_validate",
+      "target": "scripts_statusline_script"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".github/workflows/validate.yml",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "github_workflows_validate_validate",
+      "target": "claude_plugin_plugin_manifest"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".github/workflows/validate.yml",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "github_workflows_validate_validate",
+      "target": "claude_plugin_marketplace_manifest"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": ".github/dependabot.yml",
+      "source_location": null,
+      "weight": 0.8,
+      "source": "github_dependabot_actions_updates",
+      "target": "github_workflows_validate_validate"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": ".github/dependabot.yml",
+      "source_location": null,
+      "weight": 0.8,
+      "source": "github_dependabot_actions_updates",
+      "target": "github_workflows_gitleaks_gitleaks"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "three_step_verification_procedure",
+      "label": "Shared bash -n / shellcheck / smoke-test Verification Procedure",
+      "nodes": [
+        "claude_testing_verification",
+        "readme_development",
+        "github_workflows_validate_validate"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": ".github/workflows/validate.yml"
+    },
+    {
+      "id": "plugin_distribution_package",
+      "label": "Plugin Distribution Package (manifests wrapping statusline.sh)",
+      "nodes": [
+        "claude_cc_statusline_plugin",
+        "claude_plugin_plugin_manifest",
+        "claude_plugin_marketplace_manifest",
+        "scripts_statusline_script"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.85,
+      "source_file": "CLAUDE.md"
+    },
+    {
+      "id": "ci_hardening_setup",
+      "label": "CI Hardening Setup (validation, secret scan, dependency updates)",
+      "nodes": [
+        "github_workflows_validate_validate",
+        "github_workflows_gitleaks_gitleaks",
+        "github_dependabot_actions_updates"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": ".github/dependabot.yml"
+    }
+  ]
+}
