@@ -134,7 +134,10 @@ local/CI testing without mutating repo state. Responsibilities:
    (bodies, for `BREAKING CHANGE:` detection).
 3. Classify the bump level against the Conventional Commit regex
    `^(feat|fix|perf|docs|chore|ci|refactor|style|test|build)(\([a-z0-9-]+\))?(!)?: `
-   (same regex `validate.yml`'s `pr-title` job already enforces):
+   (same accepted-type list as `validate.yml`'s `pr-title` job, dialect
+   differs slightly — a capturing `(!)?` group and no `.+` subject
+   requirement — since this regex only needs to classify bump level, not
+   validate the full commit message):
    - any subject with `!` after type/scope, or `BREAKING CHANGE:` in a body
      → `major`
    - else any `feat:` subject → `minor`
@@ -192,9 +195,9 @@ artifacts.
 - Manual dry run (`--dry-run` flag on the script, printing the computed level
   and version without writing files) against this repo's real, empty tag
   history, to confirm the classification logic runs against the actual
-  commit log and produces valid JSON output — the exact resulting version
-  depends on this repo's real commit history at implementation time and is
-  not asserted here.
+  commit log and produces the expected plain-text `<level> <version>`
+  output — the exact resulting version depends on this repo's real commit
+  history at implementation time and is not asserted here.
 - End-to-end verification happens by observing the first real push to `main`
   produce a tag + GitHub Release (or via a manual `workflow_dispatch`-free
   dry run of the script locally, since GitHub Actions has no safe way to
