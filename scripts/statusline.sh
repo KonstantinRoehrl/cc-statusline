@@ -99,8 +99,8 @@ fmt_days_short() { # $1 seconds
 # Wall-clock reset formatter: epoch seconds -> local HH:MM (e.g. 10:50).
 fmt_clock() { # $1 epoch seconds
      local epoch=${1:-0}
-     [ "$epoch" -le 0 ] && { printf '--:--'; return; }
-     date -r "$epoch" '+%H:%M' 2>/dev/null || printf '--:--'
+     [ "$epoch" -le 0 ] && { printf '%s' '--:--'; return; }
+     date -r "$epoch" '+%H:%M' 2>/dev/null || printf '%s' '--:--'
 }
 
 # Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
@@ -231,7 +231,12 @@ line2="${left_a}${GUT}${right_a}"
 line3="${left_b}${GUT}${right_b}"
 
 # Line 4: session diff size (+added/-removed) + cumulative tokens (right column).
-LINES_VAL="$(printf '%s+%s%s %s-%s%s' "$C_GREEN" "$LINES_ADDED" "$RESET" "$C_RED" "$LINES_REMOVED" "$RESET")"
+# Left-column value is padded to 15 visible chars, matching mseg's bar+pct width, so the
+# right-column GUT lands in the same place as the dir/rolling/week rows above it.
+LINES_PLAIN="+${LINES_ADDED} -${LINES_REMOVED}"
+LINES_PAD=$((15 - ${#LINES_PLAIN}))
+[ "$LINES_PAD" -lt 0 ] && LINES_PAD=0
+LINES_VAL="$(printf '%s+%s%s %s-%s%s%*s' "$C_GREEN" "$LINES_ADDED" "$RESET" "$C_RED" "$LINES_REMOVED" "$RESET" "$LINES_PAD" '')"
 line4="$(printf '%s%-*s%s%s' "$C_LABEL" "$LBLW" 'lines' "$RESET" "$LINES_VAL")"
 if [ -n "$TOTAL_IN" ] && [ -n "$TOTAL_OUT" ]; then
 	TOKENS_VAL="$(printf '%s%s in · %s out%s' "$C_VAL" "$(fmt_k "$TOTAL_IN")" "$(fmt_k "$TOTAL_OUT")" "$RESET")"
