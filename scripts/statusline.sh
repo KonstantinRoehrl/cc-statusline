@@ -113,6 +113,27 @@ fmt_k() { # $1 integer count
      fi
 }
 
+# 5h rolling-window burn-rate warning: projects the wall-clock time the window's usage
+# would hit 100% at the current pace, and prints a warning glyph only when that projection
+# is earlier than the window's actual scheduled reset. Silent otherwise (missing data, a
+# window too fresh to extrapolate from, on-pace, or already at/past 100%).
+burn_rate_warning() { # $1 pct(0-100)  $2 resets_at(epoch seconds)
+     local pct=$1 resets_at=$2 now window_start elapsed remaining time_to_cap projected
+     [ -z "$pct" ] && return
+     [ -z "$resets_at" ] && return
+     now=$(date +%s)
+     window_start=$((resets_at - 18000))
+     elapsed=$((now - window_start))
+     [ "$elapsed" -lt 300 ] && return
+     [ "$pct" -lt 1 ] && return
+     remaining=$((100 - pct))
+     [ "$remaining" -le 0 ] && return
+     time_to_cap=$((remaining * elapsed / pct))
+     projected=$((now + time_to_cap))
+     [ "$projected" -ge "$resets_at" ] && return
+     printf '%s⚡%s%s' "$C_RED" "$(fmt_clock "$projected")" "$RESET"
+}
+
 # --- gather fields ---------------------------------------------------------
 MODEL="$(j '.model.display_name // "Claude"')"
 EFFORT="$(j '.effort.level // empty')"
@@ -193,7 +214,8 @@ fi
 if [ -n "$FH_PCT" ]; then
      fc="$(gradient_worse "$FH_PCT" 60 85)"
      rc="$DIM"; [ "$FH_PCT" -gt 85 ] && rc="$C_RED"
-     right_a="$(mseg 'rolling' "$FH_PCT" "$fc") ${rc}↻$(fmt_clock "${FH_RESETS_AT:-0}")${RESET}"
+     BURN_WARN="$(burn_rate_warning "$FH_PCT" "$FH_RESETS_AT")"
+     right_a="$(mseg 'rolling' "$FH_PCT" "$fc") ${rc}↻$(fmt_clock "${FH_RESETS_AT:-0}")${RESET}${BURN_WARN:+ }${BURN_WARN}"
 else
      right_a="$(mseg_na 'rolling')"
 fi
