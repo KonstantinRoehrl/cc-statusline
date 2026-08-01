@@ -99,8 +99,39 @@ fmt_days_short() { # $1 seconds
 # Wall-clock reset formatter: epoch seconds -> local HH:MM (e.g. 10:50).
 fmt_clock() { # $1 epoch seconds
      local epoch=${1:-0}
-     [ "$epoch" -le 0 ] && { printf '--:--'; return; }
-     date -r "$epoch" '+%H:%M' 2>/dev/null || printf '--:--'
+     [ "$epoch" -le 0 ] && { printf '%s' '--:--'; return; }
+     date -r "$epoch" '+%H:%M' 2>/dev/null || printf '%s' '--:--'
+}
+
+# Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
+fmt_k() { # $1 integer count
+     local n=${1:-0}
+     if [ "$n" -ge 1000 ]; then
+             printf '%d.%dk' "$((n / 1000))" "$(((n % 1000) / 100))"
+     else
+             printf '%d' "$n"
+     fi
+}
+
+# 5h rolling-window burn-rate warning: projects the wall-clock time the window's usage
+# would hit 100% at the current pace, and prints a warning glyph only when that projection
+# is earlier than the window's actual scheduled reset. Silent otherwise (missing data, a
+# window too fresh to extrapolate from, on-pace, or already at/past 100%).
+burn_rate_warning() { # $1 pct(0-100)  $2 resets_at(epoch seconds)
+     local pct=$1 resets_at=$2 now window_start elapsed remaining time_to_cap projected
+     [ -z "$pct" ] && return
+     [ -z "$resets_at" ] && return
+     now=$(date +%s)
+     window_start=$((resets_at - 18000))
+     elapsed=$((now - window_start))
+     [ "$elapsed" -lt 300 ] && return
+     [ "$pct" -lt 1 ] && return
+     remaining=$((100 - pct))
+     [ "$remaining" -le 0 ] && return
+     time_to_cap=$((remaining * elapsed / pct))
+     projected=$((now + time_to_cap))
+     [ "$projected" -ge "$resets_at" ] && return
+     printf '%s⚡%s%s' "$C_RED" "$(fmt_clock "$projected")" "$RESET"
 }
 
 # --- gather fields ---------------------------------------------------------
@@ -138,6 +169,8 @@ WK_LEFT="$(j '(.rate_limits.seven_day.resets_at // empty) | select(type == "numb
 
 LINES_ADDED="$(j '.cost.total_lines_added // 0')"
 LINES_REMOVED="$(j '.cost.total_lines_removed // 0')"
+TOTAL_IN="$(j '.context_window.total_input_tokens // empty')"
+TOTAL_OUT="$(j '.context_window.total_output_tokens // empty')"
 
 LBLW=8
 GUT="   "
@@ -181,7 +214,8 @@ fi
 if [ -n "$FH_PCT" ]; then
      fc="$(gradient_worse "$FH_PCT" 60 85)"
      rc="$DIM"; [ "$FH_PCT" -gt 85 ] && rc="$C_RED"
-     right_a="$(mseg 'rolling' "$FH_PCT" "$fc") ${rc}↻$(fmt_clock "${FH_RESETS_AT:-0}")${RESET}"
+     BURN_WARN="$(burn_rate_warning "$FH_PCT" "$FH_RESETS_AT")"
+     right_a="$(mseg 'rolling' "$FH_PCT" "$fc") ${rc}↻$(fmt_clock "${FH_RESETS_AT:-0}")${RESET}${BURN_WARN:+ }${BURN_WARN}"
 else
      right_a="$(mseg_na 'rolling')"
 fi
@@ -196,8 +230,19 @@ fi
 line2="${left_a}${GUT}${right_a}"
 line3="${left_b}${GUT}${right_b}"
 
-# Line 4: session diff size (+added/-removed), left column only.
-LINES_VAL="$(printf '%s+%s%s %s-%s%s' "$C_GREEN" "$LINES_ADDED" "$RESET" "$C_RED" "$LINES_REMOVED" "$RESET")"
+# Line 4: session diff size (+added/-removed) + cumulative tokens (right column).
+# Left-column value is padded to 15 visible chars, matching mseg's bar+pct width, so the
+# right-column GUT lands in the same place as the dir/rolling/week rows above it.
+LINES_PLAIN="+${LINES_ADDED} -${LINES_REMOVED}"
+LINES_PAD=$((15 - ${#LINES_PLAIN}))
+[ "$LINES_PAD" -lt 0 ] && LINES_PAD=0
+LINES_VAL="$(printf '%s+%s%s %s-%s%s%*s' "$C_GREEN" "$LINES_ADDED" "$RESET" "$C_RED" "$LINES_REMOVED" "$RESET" "$LINES_PAD" '')"
 line4="$(printf '%s%-*s%s%s' "$C_LABEL" "$LBLW" 'lines' "$RESET" "$LINES_VAL")"
+if [ -n "$TOTAL_IN" ] && [ -n "$TOTAL_OUT" ]; then
+	TOKENS_VAL="$(printf '%s%s in · %s out%s' "$C_VAL" "$(fmt_k "$TOTAL_IN")" "$(fmt_k "$TOTAL_OUT")" "$RESET")"
+	line4="${line4}${GUT}$(printf '%s%-*s%s%s' "$C_LABEL" "$LBLW" 'tokens' "$RESET" "$TOKENS_VAL")"
+else
+	line4="${line4}${GUT}$(printf '%s%-*s%s%s%s' "$C_LABEL" "$LBLW" 'tokens' "$RESET" "$C_NA" 'n/a')${RESET}"
+fi
 
 printf '%s\n%s\n%s\n%s\n' "$line1" "$line2" "$line3" "$line4"
