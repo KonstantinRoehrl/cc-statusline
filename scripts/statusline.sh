@@ -103,6 +103,16 @@ fmt_clock() { # $1 epoch seconds
      date -r "$epoch" '+%H:%M' 2>/dev/null || printf '--:--'
 }
 
+# Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
+fmt_k() { # $1 integer count
+     local n=${1:-0}
+     if [ "$n" -ge 1000 ]; then
+             printf '%d.%dk' "$((n / 1000))" "$(((n % 1000) / 100))"
+     else
+             printf '%d' "$n"
+     fi
+}
+
 # --- gather fields ---------------------------------------------------------
 MODEL="$(j '.model.display_name // "Claude"')"
 EFFORT="$(j '.effort.level // empty')"
@@ -138,6 +148,8 @@ WK_LEFT="$(j '(.rate_limits.seven_day.resets_at // empty) | select(type == "numb
 
 LINES_ADDED="$(j '.cost.total_lines_added // 0')"
 LINES_REMOVED="$(j '.cost.total_lines_removed // 0')"
+TOTAL_IN="$(j '.context_window.total_input_tokens // empty')"
+TOTAL_OUT="$(j '.context_window.total_output_tokens // empty')"
 
 LBLW=8
 GUT="   "
@@ -196,8 +208,14 @@ fi
 line2="${left_a}${GUT}${right_a}"
 line3="${left_b}${GUT}${right_b}"
 
-# Line 4: session diff size (+added/-removed), left column only.
+# Line 4: session diff size (+added/-removed) + cumulative tokens (right column).
 LINES_VAL="$(printf '%s+%s%s %s-%s%s' "$C_GREEN" "$LINES_ADDED" "$RESET" "$C_RED" "$LINES_REMOVED" "$RESET")"
 line4="$(printf '%s%-*s%s%s' "$C_LABEL" "$LBLW" 'lines' "$RESET" "$LINES_VAL")"
+if [ -n "$TOTAL_IN" ] && [ -n "$TOTAL_OUT" ]; then
+	TOKENS_VAL="$(printf '%s%s in · %s out%s' "$C_VAL" "$(fmt_k "$TOTAL_IN")" "$(fmt_k "$TOTAL_OUT")" "$RESET")"
+	line4="${line4}${GUT}$(printf '%s%-*s%s%s' "$C_LABEL" "$LBLW" 'tokens' "$RESET" "$TOKENS_VAL")"
+else
+	line4="${line4}${GUT}$(printf '%s%-*s%s%s%s' "$C_LABEL" "$LBLW" 'tokens' "$RESET" "$C_NA" 'n/a')${RESET}"
+fi
 
 printf '%s\n%s\n%s\n%s\n' "$line1" "$line2" "$line3" "$line4"
