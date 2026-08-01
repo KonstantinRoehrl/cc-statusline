@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- feat: add session token totals and burn-rate warning to statusline (#4)
+
 ## 0.2.0
 
 - feat: add automated release workflow
