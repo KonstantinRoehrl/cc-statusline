@@ -100,7 +100,8 @@ fmt_days_short() { # $1 seconds
 fmt_clock() { # $1 epoch seconds
      local epoch=${1:-0}
      [ "$epoch" -le 0 ] && { printf '%s' '--:--'; return; }
-     date -r "$epoch" '+%H:%M' 2>/dev/null || printf '%s' '--:--'
+     # GNU date (Linux) takes `-d @epoch`; BSD/macOS date takes `-r epoch`.
+     date -d "@$epoch" '+%H:%M' 2>/dev/null || date -r "$epoch" '+%H:%M' 2>/dev/null || printf '%s' '--:--'
 }
 
 # Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
