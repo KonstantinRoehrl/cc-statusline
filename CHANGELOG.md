@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- fix: make fmt_clock cross-platform (GNU + BSD date)
+
 ## 0.3.0
 
 - feat: add session token totals and burn-rate warning to statusline (#4)
