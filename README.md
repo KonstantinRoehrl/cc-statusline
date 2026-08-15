@@ -69,12 +69,18 @@ the initial change.
 
 ## Subagent status line
 
-`scripts/subagent-statusline.sh` renders a compact row for each active subagent — its name, the
-model it resolved to, and its context-window usage:
+`scripts/subagent-statusline.sh` renders a compact row for each active subagent: the model it
+resolved to (with its effort level when set — a subagent's effort can differ from the
+orchestrator's) and its context-window usage lead the row as separate segments, followed by its
+task description (Claude Code doesn't send override scripts a subagent role/type name, e.g.
+"general-purpose" or "Explore" — only a generic constant — so description is the closest
+stand-in), with raw token consumption trailing at the end. Per-subagent cache-hit rate isn't
+offered: Claude Code only tracks a single rolling token count per subagent internally, with no
+cache-read/cache-creation/input breakdown to compute a hit rate from.
 
 ```
-code-reviewer · Sonnet-5 ctx 15%
-implementer   · Opus-4.8 ctx 42%
+Sonnet-5 · ctx 15% · Review fix-5-2 F2 test · 40.8k tok
+Opus-4.8 (high) · ctx 42% · Trivial subagent for statusline test · 1.2k tok
 ```
 
 It is wired via Claude Code's separate **`subagentStatusLine`** setting, which — like `statusLine` —
@@ -110,7 +116,7 @@ fields Claude Code starts sending.
 bash -n scripts/statusline.sh scripts/subagent-statusline.sh scripts/statusline-lib.sh
 shellcheck -S warning scripts/statusline.sh scripts/subagent-statusline.sh scripts/statusline-lib.sh
 echo '{"model":{"display_name":"Claude"}}' | scripts/statusline.sh          # main smoke test
-echo '{"tasks":[{"id":"t1","name":"agent","model":"claude-sonnet-5"}]}' | scripts/subagent-statusline.sh  # subagent smoke test
+echo '{"tasks":[{"id":"t1","description":"agent","model":"claude-sonnet-5"}]}' | scripts/subagent-statusline.sh  # subagent smoke test
 ```
 
 ## Releases

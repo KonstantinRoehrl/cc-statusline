@@ -39,16 +39,6 @@ fmt_weekday_clock() { # $1 epoch seconds
      date -d "@$epoch" '+%a %H:%M' 2>/dev/null || date -r "$epoch" '+%a %H:%M' 2>/dev/null || printf -- '--- --:--'
 }
 
-# Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
-fmt_k() { # $1 integer count
-     local n=${1:-0}
-     if [ "$n" -ge 1000 ]; then
-             printf '%d.%dk' "$((n / 1000))" "$(((n % 1000) / 100))"
-     else
-             printf '%d' "$n"
-     fi
-}
-
 # Rolling-window burn-rate warning: projects the wall-clock time the window's usage would hit 100%
 # at the current pace, and prints a warning glyph only when that projection is earlier than the
 # window's actual scheduled reset. Silent otherwise (missing data, a window too fresh to
@@ -130,7 +120,7 @@ mseg_na() { # $1 label
 MODELSTR="$MODEL"
 [ -n "$EFFORT" ] && MODELSTR="$MODEL ($EFFORT)"
 [ "${#MODELSTR}" -gt 15 ] && MODELSTR="${MODELSTR:0:15}"
-line1="$(printf '%s%-*s%s%s%-15s%s' "$C_LABEL" "$LBLW" 'model' "$RESET" "$C_VAL" "$MODELSTR" "$RESET")"
+line1="$(printf '%s%-*s%s%s%-15s%s' "$C_LABEL" "$LBLW" 'model' "$RESET" "$C_CYAN" "$MODELSTR" "$RESET")"
 line1="${line1}${GUT}$(printf '%s%-*s%s%s%s%s' "$C_LABEL" "$LBLW" 'dir' "$RESET" "$C_VAL" "$DIRBRANCH" "$RESET")"
 
 # Left column: ctx (row A) + cache (row B).
@@ -150,7 +140,7 @@ fi
 # session-length countdown is less useful than knowing when the window reopens.
 if [ -n "$FH_PCT" ]; then
      fc="$(gradient_worse "$FH_PCT" 60 85)"
-     rc="$DIM"; [ "$FH_PCT" -gt 85 ] && rc="$C_RED"
+     rc="$C_CYAN"; [ "$FH_PCT" -gt 85 ] && rc="$C_RED"
      BURN_WARN="$(burn_rate_warning "$FH_PCT" "$FH_RESETS_AT" 18000 fmt_clock)"
      right_a="$(mseg 'rolling' "$FH_PCT" "$fc") ${rc}↻$(fmt_clock "${FH_RESETS_AT:-0}")${RESET}${BURN_WARN:+ }${BURN_WARN}"
 else
@@ -158,7 +148,7 @@ else
 fi
 if [ -n "$WK_PCT" ]; then
      wc="$(gradient_worse "$WK_PCT" 60 85)"
-     rc="$DIM"; [ "$WK_PCT" -gt 85 ] && rc="$C_RED"
+     rc="$C_CYAN"; [ "$WK_PCT" -gt 85 ] && rc="$C_RED"
      WK_BURN="$(burn_rate_warning "$WK_PCT" "$WK_RESETS_AT" 604800 fmt_weekday_clock)"
      right_b="$(mseg 'week' "$WK_PCT" "$wc") ${rc}$(fmt_weekday_clock "${WK_RESETS_AT:-0}")${RESET}${WK_BURN:+ }${WK_BURN}"
 else
