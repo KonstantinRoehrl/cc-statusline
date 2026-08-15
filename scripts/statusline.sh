@@ -27,14 +27,16 @@ LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 fmt_clock() { # $1 epoch seconds
      local epoch=${1:-0}
      [ "$epoch" -le 0 ] && { printf '%s' '--:--'; return; }
-     date -r "$epoch" '+%H:%M' 2>/dev/null || printf '%s' '--:--'
+     # GNU date (Linux) takes `-d @epoch`; BSD/macOS date takes `-r epoch`.
+     date -d "@$epoch" '+%H:%M' 2>/dev/null || date -r "$epoch" '+%H:%M' 2>/dev/null || printf '%s' '--:--'
 }
 
 # Weekday + wall-clock reset formatter: epoch seconds -> "Sat 18:00".
 fmt_weekday_clock() { # $1 epoch seconds
      local epoch=${1:-0}
      [ "$epoch" -le 0 ] && { printf -- '--- --:--'; return; }
-     date -r "$epoch" '+%a %H:%M' 2>/dev/null || printf -- '--- --:--'
+     # GNU date (Linux) takes `-d @epoch`; BSD/macOS date takes `-r epoch`.
+     date -d "@$epoch" '+%a %H:%M' 2>/dev/null || date -r "$epoch" '+%a %H:%M' 2>/dev/null || printf -- '--- --:--'
 }
 
 # Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
