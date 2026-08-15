@@ -16,6 +16,7 @@ C_LABEL="${ESC}[38;5;245m" # muted label
 C_VAL="${ESC}[38;5;252m"   # bright value
 C_NA="${ESC}[38;5;240m"    # dim "n/a"
 C_TRACK="${ESC}[38;5;238m" # unfilled meter dots
+C_CYAN="${ESC}[38;5;73m"   # subtle cyan accent: model name, rolling/weekly reset clocks
 
 # --- gradient coloring (true-color, smooth green -> amber -> red) ----------
 # Replaces hard 3-bucket thresholds with a continuous ramp, while keeping each
@@ -54,6 +55,16 @@ gradient_better() { # $1 p  $2 g  $3 o
      [ "$t" -gt 100 ] && t=100
      rgb="$(grad_rgb "$t")"
      printf '%s[38;2;%sm' "$ESC" "${rgb// /;}"
+}
+
+# Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
+fmt_k() { # $1 integer count
+     local n=${1:-0}
+     if [ "$n" -ge 1000 ]; then
+             printf '%d.%dk' "$((n / 1000))" "$(((n % 1000) / 100))"
+     else
+             printf '%d' "$n"
+     fi
 }
 
 repeat() { # $1 char  $2 count
