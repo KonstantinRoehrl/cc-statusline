@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+- feat: add weekly burn-rate warning and per-subagent status line (#7)
+
 ## 0.3.1
 
 - fix: make fmt_clock cross-platform (GNU + BSD date)
