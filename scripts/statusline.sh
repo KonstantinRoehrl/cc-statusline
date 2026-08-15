@@ -18,83 +18,10 @@ printf '%s' "$JSON" >"$HOME/.claude/statusline-last-payload.json" 2>/dev/null ||
 # --- jq helper -------------------------------------------------------------
 j() { printf '%s' "$JSON" | jq -r "$1" 2>/dev/null; }
 
-# --- colors ----------------------------------------------------------------
-ESC=$'\033'
-RESET="${ESC}[0m"
-DIM="${ESC}[2m"
-C_GREEN="${ESC}[38;5;40m"
-C_RED="${ESC}[38;5;196m"
-C_LABEL="${ESC}[38;5;245m" # muted label
-C_VAL="${ESC}[38;5;252m"   # bright value
-C_NA="${ESC}[38;5;240m"    # dim "n/a"
-C_TRACK="${ESC}[38;5;238m" # unfilled meter dots
-
-# --- gradient coloring (true-color, smooth green -> amber -> red) ----------
-# Replaces hard 3-bucket thresholds with a continuous ramp, while keeping each
-# metric's own "safe" (g) and "danger" (o) percentages as the ramp's endpoints:
-# flat green at/before g, flat red at/after o, smoothly interpolated between.
-lerp() { printf '%d' "$(($1 + (($2 - $1) * $3) / 100))"; } # $1 a $2 b $3 t(0-100)
-
-# $1 t(0-100 within the green->amber->red transition) -> "R G B"
-grad_rgb() {
-     local t=$1 tt R G B
-     if [ "$t" -le 50 ]; then
-             tt=$((t * 2))
-             R=$(lerp 0 255 "$tt"); G=$(lerp 215 135 "$tt"); B=0
-     else
-             tt=$(((t - 50) * 2))
-             R=255; G=$(lerp 135 0 "$tt"); B=0
-     fi
-     printf '%d %d %d' "$R" "$G" "$B"
-}
-
-# color for "higher is worse" (context / limits): green<=g ... red>=o, gradient between.
-gradient_worse() { # $1 p  $2 g  $3 o
-     local p=$1 g=$2 o=$3 t rgb
-     if [ "$o" -eq "$g" ]; then t=100; else t=$(((p - g) * 100 / (o - g))); fi
-     [ "$t" -lt 0 ] && t=0
-     [ "$t" -gt 100 ] && t=100
-     rgb="$(grad_rgb "$t")"
-     printf '%s[38;2;%sm' "$ESC" "${rgb// /;}"
-}
-
-# color for "higher is better" (cache hit rate): green>=g ... red<=o, gradient between.
-gradient_better() { # $1 p  $2 g  $3 o
-     local p=$1 g=$2 o=$3 t rgb
-     if [ "$g" -eq "$o" ]; then t=0; else t=$(((g - p) * 100 / (g - o))); fi
-     [ "$t" -lt 0 ] && t=0
-     [ "$t" -gt 100 ] && t=100
-     rgb="$(grad_rgb "$t")"
-     printf '%s[38;2;%sm' "$ESC" "${rgb// /;}"
-}
-
-repeat() { # $1 char  $2 count
-     local i out=""
-     for ((i = 0; i < $2; i++)); do out+="$1"; done
-     printf '%s' "$out"
-}
-
-# Dotted meter: filled dots in $3 (metric color), remaining dots in the dim track.
-# Dots carry presence without stacking into a solid vertical blob.
-bar() { # $1 pct(int 0-100)  $2 width  $3 fill-color
-     local p=$1 w=$2 color=$3 filled empty
-     [ "$p" -lt 0 ] && p=0
-     [ "$p" -gt 100 ] && p=100
-     filled=$((p * w / 100))
-     empty=$((w - filled))
-     printf '%s%s%s%s%s' \
-             "$color" "$(repeat '●' "$filled")" \
-             "$C_TRACK" "$(repeat '●' "$empty")" "$RESET"
-}
-
-# Short day/hour reset formatter: seconds -> ~2d / ~5h.
-fmt_days_short() { # $1 seconds
-     local s=${1:-0} d h
-     [ "$s" -lt 0 ] && s=0
-     d=$((s / 86400))
-     h=$((s / 3600))
-     if [ "$d" -ge 1 ]; then printf '%dd' "$d"; else printf '%dh' "$h"; fi
-}
+# --- shared library (colors, gradient engine, meter primitives) ------------
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=scripts/statusline-lib.sh
+. "$LIB_DIR/statusline-lib.sh"
 
 # Wall-clock reset formatter: epoch seconds -> local HH:MM (e.g. 10:50).
 fmt_clock() { # $1 epoch seconds
@@ -102,6 +29,14 @@ fmt_clock() { # $1 epoch seconds
      [ "$epoch" -le 0 ] && { printf '%s' '--:--'; return; }
      # GNU date (Linux) takes `-d @epoch`; BSD/macOS date takes `-r epoch`.
      date -d "@$epoch" '+%H:%M' 2>/dev/null || date -r "$epoch" '+%H:%M' 2>/dev/null || printf '%s' '--:--'
+}
+
+# Weekday + wall-clock reset formatter: epoch seconds -> "Sat 18:00".
+fmt_weekday_clock() { # $1 epoch seconds
+     local epoch=${1:-0}
+     [ "$epoch" -le 0 ] && { printf -- '--- --:--'; return; }
+     # GNU date (Linux) takes `-d @epoch`; BSD/macOS date takes `-r epoch`.
+     date -d "@$epoch" '+%a %H:%M' 2>/dev/null || date -r "$epoch" '+%a %H:%M' 2>/dev/null || printf -- '--- --:--'
 }
 
 # Abbreviate large token counts: 84246 -> 84.2k. Values under 1000 print raw (e.g. 439).
@@ -114,25 +49,26 @@ fmt_k() { # $1 integer count
      fi
 }
 
-# 5h rolling-window burn-rate warning: projects the wall-clock time the window's usage
-# would hit 100% at the current pace, and prints a warning glyph only when that projection
-# is earlier than the window's actual scheduled reset. Silent otherwise (missing data, a
-# window too fresh to extrapolate from, on-pace, or already at/past 100%).
-burn_rate_warning() { # $1 pct(0-100)  $2 resets_at(epoch seconds)
-     local pct=$1 resets_at=$2 now window_start elapsed remaining time_to_cap projected
+# Rolling-window burn-rate warning: projects the wall-clock time the window's usage would hit 100%
+# at the current pace, and prints a warning glyph only when that projection is earlier than the
+# window's actual scheduled reset. Silent otherwise (missing data, a window too fresh to
+# extrapolate from, on-pace, or already at/past 100%). Serves both the 5h and 7-day windows via the
+# window length ($3) and reset formatter ($4).
+burn_rate_warning() { # $1 pct(0-100)  $2 resets_at(epoch)  $3 window_len(sec)  $4 formatter-fn
+     local pct=$1 resets_at=$2 window_len=$3 fmt=$4 now window_start elapsed remaining time_to_cap projected
      [ -z "$pct" ] && return
      [ -z "$resets_at" ] && return
      now=$(date +%s)
-     window_start=$((resets_at - 18000))
+     window_start=$((resets_at - window_len))
      elapsed=$((now - window_start))
-     [ "$elapsed" -lt 300 ] && return
+     [ "$elapsed" -lt 300 ] && return          # window too fresh to extrapolate
      [ "$pct" -lt 1 ] && return
      remaining=$((100 - pct))
-     [ "$remaining" -le 0 ] && return
+     [ "$remaining" -le 0 ] && return           # already at/over cap
      time_to_cap=$((remaining * elapsed / pct))
      projected=$((now + time_to_cap))
-     [ "$projected" -ge "$resets_at" ] && return
-     printf '%s⚡%s%s' "$C_RED" "$(fmt_clock "$projected")" "$RESET"
+     [ "$projected" -ge "$resets_at" ] && return  # on pace: silent
+     printf '%s⚡%s%s' "$C_RED" "$("$fmt" "$projected")" "$RESET"
 }
 
 # --- gather fields ---------------------------------------------------------
@@ -166,7 +102,7 @@ FH_PCT="$(j '(.rate_limits.five_hour.used_percentage // empty) | select(. != nul
 FH_RESETS_AT="$(j '(.rate_limits.five_hour.resets_at // empty) | select(type == "number") | floor')"
 
 WK_PCT="$(j '(.rate_limits.seven_day.used_percentage // empty) | select(. != null) | floor')"
-WK_LEFT="$(j '(.rate_limits.seven_day.resets_at // empty) | select(type == "number") | (. - now) | floor')"
+WK_RESETS_AT="$(j '(.rate_limits.seven_day.resets_at // empty) | select(type == "number") | floor')"
 
 LINES_ADDED="$(j '.cost.total_lines_added // 0')"
 LINES_REMOVED="$(j '.cost.total_lines_removed // 0')"
@@ -215,7 +151,7 @@ fi
 if [ -n "$FH_PCT" ]; then
      fc="$(gradient_worse "$FH_PCT" 60 85)"
      rc="$DIM"; [ "$FH_PCT" -gt 85 ] && rc="$C_RED"
-     BURN_WARN="$(burn_rate_warning "$FH_PCT" "$FH_RESETS_AT")"
+     BURN_WARN="$(burn_rate_warning "$FH_PCT" "$FH_RESETS_AT" 18000 fmt_clock)"
      right_a="$(mseg 'rolling' "$FH_PCT" "$fc") ${rc}↻$(fmt_clock "${FH_RESETS_AT:-0}")${RESET}${BURN_WARN:+ }${BURN_WARN}"
 else
      right_a="$(mseg_na 'rolling')"
@@ -223,7 +159,8 @@ fi
 if [ -n "$WK_PCT" ]; then
      wc="$(gradient_worse "$WK_PCT" 60 85)"
      rc="$DIM"; [ "$WK_PCT" -gt 85 ] && rc="$C_RED"
-     right_b="$(mseg 'week' "$WK_PCT" "$wc") ${rc}$(fmt_days_short "${WK_LEFT:-0}")${RESET}"
+     WK_BURN="$(burn_rate_warning "$WK_PCT" "$WK_RESETS_AT" 604800 fmt_weekday_clock)"
+     right_b="$(mseg 'week' "$WK_PCT" "$wc") ${rc}$(fmt_weekday_clock "${WK_RESETS_AT:-0}")${RESET}${WK_BURN:+ }${WK_BURN}"
 else
      right_b="$(mseg_na 'week')"
 fi
