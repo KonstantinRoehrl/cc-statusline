@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+- feat(statusline): redesign subagent row layout and fix payload parsing bugs (#9)
+
 ## 0.4.0
 
 - feat: add weekly burn-rate warning and per-subagent status line (#7)
