@@ -5,7 +5,7 @@ A 4-line ANSI dashboard statusline for [Claude Code](https://claude.com/claude-c
 ```
 model   Sonnet 5 (high)   dir     Programming
 ctx     ●●●●●●●●●● 47%   rolling ●●●●●●●●●● 62% ↻11:25
-cache   ●●●●●●●●●● 85%   week    ●●●●●●●●●● 30% 2d
+cache   ●●●●●●●●●● 85%   week    ●●●●●●●●●● 30% Sat 18:00
 lines   +214 -58
 ```
 
@@ -13,7 +13,7 @@ lines   +214 -58
 |---|---|---|
 | 1 | model + effort level | folder · git branch |
 | 2 | context-window meter | rolling 5h rate-limit meter + reset clock |
-| 3 | prompt-cache hit-rate meter | weekly rate-limit meter + reset |
+| 3 | prompt-cache hit-rate meter | weekly rate-limit meter + weekday-clock reset (⚡ early-exhaustion warning when projected to hit 100% before reset) |
 | 4 | session line diff (+added/-removed) | |
 
 Meters are dotted bars, gradient-colored by health (green → amber → red as
@@ -67,6 +67,33 @@ place, so the statusline picks up changes without you touching
 `settings.json` again. Start a new session (or run `/statusline`) to pick up
 the initial change.
 
+## Subagent status line
+
+`scripts/subagent-statusline.sh` renders a compact row for each active subagent — its name, the
+model it resolved to, and its context-window usage:
+
+```
+code-reviewer · Sonnet-5 ctx 15%
+implementer   · Opus-4.8 ctx 42%
+```
+
+It is wired via Claude Code's separate **`subagentStatusLine`** setting, which — like `statusLine` —
+is a user-level preference a plugin cannot set for you. It requires **Claude Code v2.1.205+** (the
+release that added the subagent `model` field). Merge this into `~/.claude/settings.json`:
+
+```json
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "~/.claude/plugins/marketplaces/cc-statusline/scripts/subagent-statusline.sh"
+  }
+}
+```
+
+The same marketplace-clone path rules as the main statusline apply (see Install above): point at the
+clone, not the versioned cache or `${CLAUDE_PLUGIN_ROOT}`. The last raw subagent payload is cached
+at `~/.claude/subagent-statusline-last-payload.json` for debugging.
+
 ## How it works
 
 Claude Code invokes the configured `statusLine` command on an interval,
@@ -80,10 +107,10 @@ fields Claude Code starts sending.
 ## Development
 
 ```
-bash -n scripts/statusline.sh          # syntax check
-shellcheck -S warning scripts/statusline.sh   # lint (info-level SC2016 hits on
-                                               # single-quoted jq filters are intentional)
-echo '{"model":{"display_name":"Claude"}}' | scripts/statusline.sh   # smoke test
+bash -n scripts/statusline.sh scripts/subagent-statusline.sh scripts/statusline-lib.sh
+shellcheck -S warning scripts/statusline.sh scripts/subagent-statusline.sh scripts/statusline-lib.sh
+echo '{"model":{"display_name":"Claude"}}' | scripts/statusline.sh          # main smoke test
+echo '{"tasks":[{"id":"t1","name":"agent","model":"claude-sonnet-5"}]}' | scripts/subagent-statusline.sh  # subagent smoke test
 ```
 
 ## Releases
