@@ -226,6 +226,24 @@ case_limits_prunes_old_snapshots() {
 	[ ! -e "$CACHE/sess-stale.limits.json" ] && pass || fail "snapshot older than 8 days was not pruned"
 }
 
+age_snapshot() { # $1 file  $2 age in seconds -> backdates the file's mtime (BSD and GNU date)
+	local stamp t=$(($(now) - $2))
+	stamp="$(date -r "$t" +%Y%m%d%H%M.%S 2>/dev/null || date -d "@$t" +%Y%m%d%H%M.%S)"
+	touch -t "$stamp" "$1"
+}
+
+case_limits_prune_boundary_is_eight_days() {
+	local reset
+	reset=$(($(now) + 3600))
+	write_snapshot sess-old 50 "$reset"
+	write_snapshot sess-recent 50 "$reset"
+	age_snapshot "$CACHE/sess-old.limits.json" $((8 * 86400 + 3600))
+	age_snapshot "$CACHE/sess-recent.limits.json" $((8 * 86400 - 3600))
+	run_sl "$(limits_payload 7 "$reset")"
+	[ ! -e "$CACHE/sess-old.limits.json" ] && pass || fail "snapshot 8 days and 1 hour old was not pruned"
+	[ -e "$CACHE/sess-recent.limits.json" ] && pass || fail "snapshot 7 days and 23 hours old was pruned"
+}
+
 # --- cases: prompt-cache countdown ------------------------------------------
 cache_payload() { # $1 seconds until expiry  [$2 ttl, omitted when empty] -> BASE_PAYLOAD with a warm prompt_cache
 	payload "$(jq -cn --argjson exp "$(($(now) + $1))" --arg ttl "${2:-}" \
@@ -246,6 +264,13 @@ case_countdown_red_when_close_to_eviction() {
 	run_sl "$(cache_payload 50 5m)"
 	assert_contains "50s left of 5m" "$(raw_line 3)" "${C_RED}◷<1m"
 	assert_aligned "50s left"
+}
+
+case_countdown_long_ttl_keeps_the_grid_aligned() {
+	run_sl "$(cache_payload 72000 24h)"
+	assert_contains "20h left, 24h ttl" "$(plain_line 3)" "◷20h"
+	assert_empty_stderr "20h left"
+	assert_aligned "20h left"
 }
 
 case_countdown_unknown_ttl_turns_red_at_one_minute() {

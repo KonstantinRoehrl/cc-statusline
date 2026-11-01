@@ -49,9 +49,9 @@ limits_save() {
      return 0
 }
 
-# Snapshots older than the 7-day window can no longer matter.
+# Snapshots older than 8 days (11520 minutes; the weekly window is 7) can no longer matter.
 limits_prune() {
-     find "$CACHE_DIR" -maxdepth 1 -type f \( -name '*.limits.json' -o -name '.limits.*' \) -mtime +8 -delete 2>/dev/null
+     find "$CACHE_DIR" -maxdepth 1 -type f \( -name '*.limits.json' -o -name '.limits.*' \) -mmin +11520 -delete 2>/dev/null
      return 0
 }
 
@@ -190,14 +190,21 @@ cache_countdown() {
      [ "$left" -gt 0 ] || return 0
      ttl="$(j '.prompt_cache.ttl // empty')"
      case "$ttl" in 5m) ttl_s=300 ;; 1h) ttl_s=3600 ;; *) ttl_s=0 ;; esac
-     if [ "$left" -lt 60 ]; then txt='<1m'; else txt="$(((left + 59) / 60))m"; fi
+     # Whole minutes up to 99m, then whole hours: the cell is only COL_W - METER_W wide.
+     if [ "$left" -lt 60 ]; then
+             txt='<1m'
+     elif [ "$left" -le $((99 * 60)) ]; then
+             txt="$(((left + 59) / 60))m"
+     else
+             txt="$(((left + 3599) / 3600))h"
+     fi
      color="$C_LABEL"
      if [ "$ttl_s" -gt 0 ]; then
              [ $((left * 5)) -le "$ttl_s" ] && color="$C_RED"
      else
              [ "$left" -le 60 ] && color="$C_RED"
      fi
-     printf ' %s◷%s%s%*s' "$color" "$txt" "$RESET" "$((COL_W - METER_W - 2 - ${#txt}))" ''
+     printf ' %s◷%s%s%s' "$color" "$txt" "$RESET" "$(col_pad "$((METER_W + 2 + ${#txt}))")"
 }
 
 # Colored 4-wide right-justified percentage, e.g. " 62%".

@@ -13,7 +13,7 @@ lines   +214 -58               tokens  84.2k in · 12.1k out
 |---|---|---|
 | 1 | model + effort level | folder · git branch, then the open PR: `#42 ✓` approved, `✗` changes requested, `…` pending, `◌` draft (`!7` for a GitLab merge request); nothing when there is no open PR |
 | 2 | context-window meter | rolling 5h rate-limit meter + reset clock |
-| 3 | prompt-cache hit-rate meter + `◷50m` time until the cache goes cold (red in its last 20% of the TTL) | weekly rate-limit meter + weekday-clock reset (⚡ early-exhaustion warning when projected to hit 100% before reset) |
+| 3 | prompt-cache hit-rate meter + `◷50m` time until the cache goes cold (red in its last 20% of the TTL; whole hours, e.g. `◷20h`, past 99 minutes) | weekly rate-limit meter + weekday-clock reset (⚡ early-exhaustion warning when projected to hit 100% before reset) |
 | 4 | session line diff (+added/-removed) | cumulative input/output tokens |
 
 Meters are dotted bars, gradient-colored by health (green → amber → red as
