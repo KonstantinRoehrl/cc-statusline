@@ -134,6 +134,22 @@ else
 fi
 if [ "${#DIRBRANCH}" -gt 40 ]; then DIRBRANCH="${DIRBRANCH:0:39}…"; fi
 
+# PR segment ("#42 ✓"), appended after the truncated folder · branch so it is never cut off.
+# Claude Code sends `pr` only while an open PR exists; `kind: "mr"` marks a GitLab merge request.
+PR_SEG=""
+read -r PR_REF PR_STATE <<<"$(j '.pr | select(type == "object" and (.number | type) == "number")
+     | "\(if .kind == "mr" then "!" else "#" end)\(.number | floor) \(.review_state // "-")"')"
+if [ -n "$PR_REF" ]; then
+     case "$PR_STATE" in
+             approved) PR_MARK="${C_GREEN}✓" ;;
+             changes_requested) PR_MARK="${C_RED}✗" ;;
+             pending) PR_MARK="${C_LABEL}…" ;;
+             draft) PR_MARK="${C_LABEL}◌" ;;
+             *) PR_MARK="" ;;
+     esac
+     PR_SEG=" ${C_VAL}${PR_REF}${PR_MARK:+ }${PR_MARK}${RESET}"
+fi
+
 CTX_PCT="$(j '(.context_window.used_percentage // empty) | select(. != null) | floor')"
 
 CACHE_PCT="$(j '
@@ -203,7 +219,7 @@ MODELSTR="$MODEL"
 [ -n "$EFFORT" ] && MODELSTR="$MODEL ($EFFORT)"
 [ "${#MODELSTR}" -gt "$COL_W" ] && MODELSTR="${MODELSTR:0:COL_W}"
 line1="$(printf '%s%-*s%s%s%-*s%s' "$C_LABEL" "$LBLW" 'model' "$RESET" "$C_CYAN" "$COL_W" "$MODELSTR" "$RESET")"
-line1="${line1}${GUT}$(printf '%s%-*s%s%s%s%s' "$C_LABEL" "$LBLW" 'dir' "$RESET" "$C_VAL" "$DIRBRANCH" "$RESET")"
+line1="${line1}${GUT}$(printf '%s%-*s%s%s%s%s' "$C_LABEL" "$LBLW" 'dir' "$RESET" "$C_VAL" "$DIRBRANCH" "$RESET")${PR_SEG}"
 
 # Left column: ctx (row A) + cache (row B).
 if [ -n "$CTX_PCT" ]; then

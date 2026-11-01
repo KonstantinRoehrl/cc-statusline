@@ -272,6 +272,58 @@ case_countdown_hidden_without_a_warm_cache() {
 	done
 }
 
+# --- cases: PR segment ------------------------------------------------------
+pr_payload() { # $1 pr object JSON -> BASE_PAYLOAD with that pr
+	payload "$(jq -cn --argjson pr "$1" '{pr: $pr}')"
+}
+
+case_pr_review_states() {
+	run_sl "$(pr_payload '{"number":42,"review_state":"approved"}')"
+	assert_contains "approved" "$(plain_line 1)" " #42 ✓"
+	assert_contains "approved is green" "$(raw_line 1)" "${C_GREEN}✓"
+	run_sl "$(pr_payload '{"number":42,"review_state":"changes_requested"}')"
+	assert_contains "changes requested" "$(plain_line 1)" " #42 ✗"
+	assert_contains "changes requested is red" "$(raw_line 1)" "${C_RED}✗"
+	run_sl "$(pr_payload '{"number":42,"review_state":"pending"}')"
+	assert_contains "pending" "$(plain_line 1)" " #42 …"
+	assert_contains "pending is dim" "$(raw_line 1)" "${C_LABEL}…"
+	run_sl "$(pr_payload '{"number":42,"review_state":"draft"}')"
+	assert_contains "draft" "$(plain_line 1)" " #42 ◌"
+	assert_contains "draft is dim" "$(raw_line 1)" "${C_LABEL}◌"
+	assert_aligned "draft"
+}
+
+case_pr_without_review_state() {
+	local line
+	run_sl "$(pr_payload '{"number":42}')"
+	line="$(plain_line 1)"
+	assert_contains "number only" "$line" " #42"
+	case "$line" in *" #42") pass ;; *) fail "number only: [$line] should end right after the number" ;; esac
+	assert_aligned "number only"
+}
+
+case_pr_gitlab_merge_request() {
+	run_sl "$(pr_payload '{"number":7,"kind":"mr","review_state":"approved"}')"
+	assert_contains "merge request" "$(plain_line 1)" " !7 ✓"
+}
+
+case_pr_absent() {
+	run_sl "$(payload)"
+	assert_not_contains "no pr key" "$(plain_line 1)" " #"
+	run_sl "$(payload '{"pr":null}')"
+	assert_not_contains "pr null" "$(plain_line 1)" " #"
+	assert_empty_stderr "pr null"
+}
+
+case_pr_survives_branch_truncation() {
+	local long_dir
+	long_dir="/nonexistent/$(printf 'a%.0s' $(seq 1 60))"
+	run_sl "$(payload "$(jq -cn --arg d "$long_dir" '{workspace: {current_dir: $d}, pr: {number: 42, review_state: "approved"}}')")"
+	assert_contains "long folder is truncated" "$(plain_line 1)" "…"
+	assert_contains "pr survives truncation" "$(plain_line 1)" " #42 ✓"
+	assert_aligned "long folder with pr"
+}
+
 # --- cases: runner ----------------------------------------------------------
 for case_fn in $(compgen -A function | grep '^case_'); do
 	fresh_sandbox
