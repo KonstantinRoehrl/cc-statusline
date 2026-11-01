@@ -12,8 +12,12 @@
 # All date/percentage math is done via jq/bash arithmetic.
 
 JSON="$(cat)"
-# Keep the last raw payload for debugging / discovering any per-model limit field.
-printf '%s' "$JSON" >"$HOME/.claude/statusline-last-payload.json" 2>/dev/null || true
+NOW="$(date +%s)"
+# Keep the last raw payload for debugging / discovering new fields. Nothing reads it back; the
+# group (not a bare `2>/dev/null` on the command) silences the shell's own "No such file" error.
+{ printf '%s' "$JSON" >"$HOME/.claude/statusline-last-payload.json"; } 2>/dev/null || true
+# Per-session rate-limit snapshots shared between concurrently running sessions (see limits_merge).
+CACHE_DIR="${CC_STATUSLINE_CACHE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/statusline-cache}"
 
 # --- jq helper -------------------------------------------------------------
 j() { printf '%s' "$JSON" | jq -r "$1" 2>/dev/null; }
@@ -22,6 +26,58 @@ j() { printf '%s' "$JSON" | jq -r "$1" 2>/dev/null; }
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 # shellcheck source=scripts/statusline-lib.sh
 . "$LIB_DIR/statusline-lib.sh"
+
+# Claude Code builds `rate_limits` from this session's own last API response, so an idle session
+# shows frozen numbers while other sessions keep spending. Each run therefore saves its snapshot to
+# the cache dir and merges everyone's: the newest window wins and, within it, the highest usage
+# (usage only grows inside a window). Best-effort throughout: any failure degrades to the payload.
+limits_save() {
+     local sid tmp
+     sid="$(j '.session_id // empty')"
+     sid="${sid//[^A-Za-z0-9_-]/_}"
+     [ -n "$sid" ] || return 0
+     {
+          mkdir -p "$CACHE_DIR" || return 0
+          tmp="$(mktemp "$CACHE_DIR/.limits.XXXXXX")" || return 0
+          printf '%s' "$JSON" | jq -c '
+               (.rate_limits // {}) | {five_hour, seven_day}
+               | with_entries(select(.value | type == "object"))
+               | map_values({used_percentage, resets_at})
+               | select(length > 0)' >"$tmp"
+          if [ -s "$tmp" ]; then mv -f "$tmp" "$CACHE_DIR/$sid.limits.json"; else rm -f "$tmp"; fi
+     } 2>/dev/null
+     return 0
+}
+
+# Snapshots older than 8 days (11520 minutes; the weekly window is 7) can no longer matter.
+limits_prune() {
+     find "$CACHE_DIR" -maxdepth 1 -type f \( -name '*.limits.json' -o -name '.limits.*' \) -mmin +11520 -delete 2>/dev/null
+     return 0
+}
+
+# Merge all snapshots plus this payload; prints "<state> <pct> <resets_at>" for five_hour, then for
+# seven_day. State is `ok`; `lapsed` (snapshots exist but every window has reset: 0 %, reset time
+# unknown); or `absent` (no data anywhere). `awk 1` terminates every file with a newline so a
+# truncated file cannot swallow its neighbour's line; unparsable lines are skipped.
+limits_merge() {
+     awk 1 "$CACHE_DIR"/*.limits.json 2>/dev/null |
+          jq -nRr --argjson now "$NOW" --arg cur "$JSON" '
+               def entries($k): [ .[] | .[$k]? | select(type == "object")
+                    | select((.used_percentage | type) == "number" and (.resets_at | type) == "number")
+                    | {p: (.used_percentage | floor), r: (.resets_at | floor)} ];
+               def merged($k):
+                    entries($k) as $all
+                    | if ($all | length) == 0 then "absent 0 0"
+                      else ($all | map(select(.r > $now))) as $live
+                           | if ($live | length) == 0 then "lapsed 0 0"
+                             else ($live | max_by(.r) | .r) as $r
+                                  | "ok \($live | map(select(.r == $r) | .p) | max) \($r)"
+                             end
+                      end;
+               [ inputs | fromjson? | select(type == "object") ]
+                    + [ ($cur | fromjson? | .rate_limits? | select(type == "object")) ]
+               | "\(merged("five_hour")) \(merged("seven_day"))"' 2>/dev/null
+}
 
 # Wall-clock reset formatter: epoch seconds -> local HH:MM (e.g. 10:50).
 fmt_clock() { # $1 epoch seconds
@@ -78,6 +134,22 @@ else
 fi
 if [ "${#DIRBRANCH}" -gt 40 ]; then DIRBRANCH="${DIRBRANCH:0:39}…"; fi
 
+# PR segment ("#42 ✓"), appended after the truncated folder · branch so it is never cut off.
+# Claude Code sends `pr` only while an open PR exists; `kind: "mr"` marks a GitLab merge request.
+PR_SEG=""
+read -r PR_REF PR_STATE <<<"$(j '.pr | select(type == "object" and (.number | type) == "number")
+     | "\(if .kind == "mr" then "!" else "#" end)\(.number | floor) \(.review_state // "-")"')"
+if [ -n "$PR_REF" ]; then
+     case "$PR_STATE" in
+             approved) PR_MARK="${C_GREEN}✓" ;;
+             changes_requested) PR_MARK="${C_RED}✗" ;;
+             pending) PR_MARK="${C_LABEL}…" ;;
+             draft) PR_MARK="${C_LABEL}◌" ;;
+             *) PR_MARK="" ;;
+     esac
+     PR_SEG=" ${C_VAL}${PR_REF}${PR_MARK:+ }${PR_MARK}${RESET}"
+fi
+
 CTX_PCT="$(j '(.context_window.used_percentage // empty) | select(. != null) | floor')"
 
 CACHE_PCT="$(j '
@@ -88,11 +160,11 @@ CACHE_PCT="$(j '
  | select($den > 0)
  | ($r * 100 / $den) | floor')"
 
-FH_PCT="$(j '(.rate_limits.five_hour.used_percentage // empty) | select(. != null) | floor')"
-FH_RESETS_AT="$(j '(.rate_limits.five_hour.resets_at // empty) | select(type == "number") | floor')"
-
-WK_PCT="$(j '(.rate_limits.seven_day.used_percentage // empty) | select(. != null) | floor')"
-WK_RESETS_AT="$(j '(.rate_limits.seven_day.resets_at // empty) | select(type == "number") | floor')"
+limits_save
+limits_prune
+read -r FH_STATE FH_PCT FH_RESETS_AT WK_STATE WK_PCT WK_RESETS_AT <<<"$(limits_merge)"
+[ "${FH_STATE:-absent}" = absent ] && FH_PCT=""
+[ "${WK_STATE:-absent}" = absent ] && WK_PCT=""
 
 LINES_ADDED="$(j '.cost.total_lines_added // 0')"
 LINES_REMOVED="$(j '.cost.total_lines_removed // 0')"
@@ -101,6 +173,39 @@ TOTAL_OUT="$(j '.context_window.total_output_tokens // empty')"
 
 LBLW=8
 GUT="   "
+METER_W=15 # mseg: 10-dot bar + space + 4-wide percentage
+COL_W=20   # visible width of every left-column value: a meter plus room for " ◷NNm"
+
+# Spaces completing a left-column value that already shows $1 visible characters.
+col_pad() { printf '%*s' "$((COL_W > $1 ? COL_W - $1 : 0))" ''; }
+
+# Prompt-cache countdown cell " ◷NNm" (exactly COL_W - METER_W visible chars) while the cache is
+# warm; nothing otherwise. Red once 20% of the TTL is left (60 s when the TTL is not 5m/1h).
+cache_countdown() {
+     local expires ttl ttl_s left txt color
+     expires="$(j '(.prompt_cache // empty) | select(type == "object" and .warm == true and .caching_observed != false)
+             | (.expires_at // empty) | select(type == "number") | floor')"
+     [ -n "$expires" ] || return 0
+     left=$((expires - NOW))
+     [ "$left" -gt 0 ] || return 0
+     ttl="$(j '.prompt_cache.ttl // empty')"
+     case "$ttl" in 5m) ttl_s=300 ;; 1h) ttl_s=3600 ;; *) ttl_s=0 ;; esac
+     # Whole minutes up to 99m, then whole hours: the cell is only COL_W - METER_W wide.
+     if [ "$left" -lt 60 ]; then
+             txt='<1m'
+     elif [ "$left" -le $((99 * 60)) ]; then
+             txt="$(((left + 59) / 60))m"
+     else
+             txt="$(((left + 3599) / 3600))h"
+     fi
+     color="$C_LABEL"
+     if [ "$ttl_s" -gt 0 ]; then
+             [ $((left * 5)) -le "$ttl_s" ] && color="$C_RED"
+     else
+             [ "$left" -le 60 ] && color="$C_RED"
+     fi
+     printf ' %s◷%s%s%s' "$color" "$txt" "$RESET" "$(col_pad "$((METER_W + 2 + ${#txt}))")"
+}
 
 # Colored 4-wide right-justified percentage, e.g. " 62%".
 pct4() { printf '%s%3d%%%s' "$2" "$1" "$RESET"; }
@@ -110,27 +215,28 @@ mseg() { # $1 label  $2 pct  $3 color
      printf '%s%-*s%s%s %s' \
              "$C_LABEL" "$LBLW" "$1" "$RESET" "$(bar "$2" 10 "$3")" "$(pct4 "$2" "$3")"
 }
-# Missing-metric cell of equal width: label(8) + "n/a" padded across meter(15).
+# Missing-metric cell of equal width: label(8) + "n/a" padded across the left-column value width.
 mseg_na() { # $1 label
-     printf '%s%-*s%s%s%-15s%s' \
-             "$C_LABEL" "$LBLW" "$1" "$RESET" "$C_NA" 'n/a' "$RESET"
+     printf '%s%-*s%s%s%-*s%s' \
+             "$C_LABEL" "$LBLW" "$1" "$RESET" "$C_NA" "$COL_W" 'n/a' "$RESET"
 }
 
-# Line 1: identity (model | folder · branch); model padded to meter width (15).
+# Line 1: identity (model | folder · branch); model padded to the left-column value width.
 MODELSTR="$MODEL"
 [ -n "$EFFORT" ] && MODELSTR="$MODEL ($EFFORT)"
-[ "${#MODELSTR}" -gt 15 ] && MODELSTR="${MODELSTR:0:15}"
-line1="$(printf '%s%-*s%s%s%-15s%s' "$C_LABEL" "$LBLW" 'model' "$RESET" "$C_CYAN" "$MODELSTR" "$RESET")"
-line1="${line1}${GUT}$(printf '%s%-*s%s%s%s%s' "$C_LABEL" "$LBLW" 'dir' "$RESET" "$C_VAL" "$DIRBRANCH" "$RESET")"
+[ "${#MODELSTR}" -gt "$COL_W" ] && MODELSTR="${MODELSTR:0:COL_W}"
+line1="$(printf '%s%-*s%s%s%-*s%s' "$C_LABEL" "$LBLW" 'model' "$RESET" "$C_CYAN" "$COL_W" "$MODELSTR" "$RESET")"
+line1="${line1}${GUT}$(printf '%s%-*s%s%s%s%s' "$C_LABEL" "$LBLW" 'dir' "$RESET" "$C_VAL" "$DIRBRANCH" "$RESET")${PR_SEG}"
 
 # Left column: ctx (row A) + cache (row B).
 if [ -n "$CTX_PCT" ]; then
-     left_a="$(mseg 'ctx' "$CTX_PCT" "$(gradient_worse "$CTX_PCT" 40 65)")"
+     left_a="$(mseg 'ctx' "$CTX_PCT" "$(gradient_worse "$CTX_PCT" 40 65)")$(col_pad "$METER_W")"
 else
      left_a="$(mseg_na 'ctx')"
 fi
 if [ -n "$CACHE_PCT" ]; then
-     left_b="$(mseg 'cache' "$CACHE_PCT" "$(gradient_better "$CACHE_PCT" 70 40)")"
+     COUNTDOWN="$(cache_countdown)"
+     left_b="$(mseg 'cache' "$CACHE_PCT" "$(gradient_better "$CACHE_PCT" 70 40)")${COUNTDOWN:-$(col_pad "$METER_W")}"
 else
      left_b="$(mseg_na 'cache')"
 fi
@@ -159,10 +265,10 @@ line2="${left_a}${GUT}${right_a}"
 line3="${left_b}${GUT}${right_b}"
 
 # Line 4: session diff size (+added/-removed) + cumulative tokens (right column).
-# Left-column value is padded to 15 visible chars, matching mseg's bar+pct width, so the
+# Left-column value is padded to COL_W visible chars, matching the meter rows, so the
 # right-column GUT lands in the same place as the dir/rolling/week rows above it.
 LINES_PLAIN="+${LINES_ADDED} -${LINES_REMOVED}"
-LINES_PAD=$((15 - ${#LINES_PLAIN}))
+LINES_PAD=$((COL_W - ${#LINES_PLAIN}))
 [ "$LINES_PAD" -lt 0 ] && LINES_PAD=0
 LINES_VAL="$(printf '%s+%s%s %s-%s%s%*s' "$C_GREEN" "$LINES_ADDED" "$RESET" "$C_RED" "$LINES_REMOVED" "$RESET" "$LINES_PAD" '')"
 line4="$(printf '%s%-*s%s%s' "$C_LABEL" "$LBLW" 'lines' "$RESET" "$LINES_VAL")"
