@@ -12,8 +12,12 @@
 # All date/percentage math is done via jq/bash arithmetic.
 
 JSON="$(cat)"
-# Keep the last raw payload for debugging / discovering any per-model limit field.
-printf '%s' "$JSON" >"$HOME/.claude/statusline-last-payload.json" 2>/dev/null || true
+NOW="$(date +%s)"
+# Keep the last raw payload for debugging / discovering new fields. Nothing reads it back; the
+# group (not a bare `2>/dev/null` on the command) silences the shell's own "No such file" error.
+{ printf '%s' "$JSON" >"$HOME/.claude/statusline-last-payload.json"; } 2>/dev/null || true
+# Per-session rate-limit snapshots shared between concurrently running sessions (see limits_merge).
+CACHE_DIR="${CC_STATUSLINE_CACHE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/statusline-cache}"
 
 # --- jq helper -------------------------------------------------------------
 j() { printf '%s' "$JSON" | jq -r "$1" 2>/dev/null; }
@@ -22,6 +26,58 @@ j() { printf '%s' "$JSON" | jq -r "$1" 2>/dev/null; }
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 # shellcheck source=scripts/statusline-lib.sh
 . "$LIB_DIR/statusline-lib.sh"
+
+# Claude Code builds `rate_limits` from this session's own last API response, so an idle session
+# shows frozen numbers while other sessions keep spending. Each run therefore saves its snapshot to
+# the cache dir and merges everyone's: the newest window wins and, within it, the highest usage
+# (usage only grows inside a window). Best-effort throughout: any failure degrades to the payload.
+limits_save() {
+     local sid tmp
+     sid="$(j '.session_id // empty')"
+     sid="${sid//[^A-Za-z0-9_-]/_}"
+     [ -n "$sid" ] || return 0
+     {
+          mkdir -p "$CACHE_DIR" || return 0
+          tmp="$(mktemp "$CACHE_DIR/.limits.XXXXXX")" || return 0
+          printf '%s' "$JSON" | jq -c '
+               (.rate_limits // {}) | {five_hour, seven_day}
+               | with_entries(select(.value | type == "object"))
+               | map_values({used_percentage, resets_at})
+               | select(length > 0)' >"$tmp"
+          if [ -s "$tmp" ]; then mv -f "$tmp" "$CACHE_DIR/$sid.limits.json"; else rm -f "$tmp"; fi
+     } 2>/dev/null
+     return 0
+}
+
+# Snapshots older than the 7-day window can no longer matter.
+limits_prune() {
+     find "$CACHE_DIR" -maxdepth 1 -type f \( -name '*.limits.json' -o -name '.limits.*' \) -mtime +8 -delete 2>/dev/null
+     return 0
+}
+
+# Merge all snapshots plus this payload; prints "<state> <pct> <resets_at>" for five_hour, then for
+# seven_day. State is `ok`; `lapsed` (snapshots exist but every window has reset: 0 %, reset time
+# unknown); or `absent` (no data anywhere). `awk 1` terminates every file with a newline so a
+# truncated file cannot swallow its neighbour's line; unparsable lines are skipped.
+limits_merge() {
+     awk 1 "$CACHE_DIR"/*.limits.json 2>/dev/null |
+          jq -nRr --argjson now "$NOW" --arg cur "$JSON" '
+               def entries($k): [ .[] | .[$k]? | select(type == "object")
+                    | select((.used_percentage | type) == "number" and (.resets_at | type) == "number")
+                    | {p: (.used_percentage | floor), r: (.resets_at | floor)} ];
+               def merged($k):
+                    entries($k) as $all
+                    | if ($all | length) == 0 then "absent 0 0"
+                      else ($all | map(select(.r > $now))) as $live
+                           | if ($live | length) == 0 then "lapsed 0 0"
+                             else ($live | max_by(.r) | .r) as $r
+                                  | "ok \($live | map(select(.r == $r) | .p) | max) \($r)"
+                             end
+                      end;
+               [ inputs | fromjson? | select(type == "object") ]
+                    + [ ($cur | fromjson? | .rate_limits? | select(type == "object")) ]
+               | "\(merged("five_hour")) \(merged("seven_day"))"' 2>/dev/null
+}
 
 # Wall-clock reset formatter: epoch seconds -> local HH:MM (e.g. 10:50).
 fmt_clock() { # $1 epoch seconds
@@ -88,11 +144,11 @@ CACHE_PCT="$(j '
  | select($den > 0)
  | ($r * 100 / $den) | floor')"
 
-FH_PCT="$(j '(.rate_limits.five_hour.used_percentage // empty) | select(. != null) | floor')"
-FH_RESETS_AT="$(j '(.rate_limits.five_hour.resets_at // empty) | select(type == "number") | floor')"
-
-WK_PCT="$(j '(.rate_limits.seven_day.used_percentage // empty) | select(. != null) | floor')"
-WK_RESETS_AT="$(j '(.rate_limits.seven_day.resets_at // empty) | select(type == "number") | floor')"
+limits_save
+limits_prune
+read -r FH_STATE FH_PCT FH_RESETS_AT WK_STATE WK_PCT WK_RESETS_AT <<<"$(limits_merge)"
+[ "${FH_STATE:-absent}" = absent ] && FH_PCT=""
+[ "${WK_STATE:-absent}" = absent ] && WK_PCT=""
 
 LINES_ADDED="$(j '.cost.total_lines_added // 0')"
 LINES_REMOVED="$(j '.cost.total_lines_removed // 0')"

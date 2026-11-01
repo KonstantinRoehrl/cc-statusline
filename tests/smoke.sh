@@ -118,6 +118,114 @@ case_baseline_full_payload() {
 	assert_aligned "full payload"
 }
 
+# --- cases: shared rate-limit snapshots -------------------------------------
+case_limits_max_across_sessions() {
+	local reset
+	reset=$(($(now) + 3600))
+	write_snapshot sess-a 7 "$reset"
+	write_snapshot sess-b 26 "$reset"
+	run_sl "$(limits_payload 7 "$reset")"
+	assert_contains "same window: highest percentage wins" "$(plain_line 2)" " 26%"
+	assert_empty_stderr "same window"
+	assert_aligned "same window"
+}
+
+case_limits_writes_session_snapshot() {
+	local reset
+	reset=$(($(now) + 3600))
+	run_sl "$(limits_payload 12 "$reset" 40 "$((reset + 86400))")"
+	assert_eq "snapshot five_hour pct" 12 "$(jq -r '.five_hour.used_percentage' "$CACHE/sess-base.limits.json")"
+	assert_eq "snapshot seven_day pct" 40 "$(jq -r '.seven_day.used_percentage' "$CACHE/sess-base.limits.json")"
+}
+
+case_limits_newer_window_wins() {
+	local t
+	t=$(now)
+	write_snapshot sess-new 5 "$((t + 9000))"
+	run_sl "$(limits_payload 80 "$((t + 1000))")"
+	assert_contains "newer window beats higher percentage" "$(plain_line 2)" "  5%"
+	assert_not_contains "newer window beats higher percentage" "$(plain_line 2)" "80%"
+}
+
+case_limits_lapsed_window() {
+	local t
+	t=$(now)
+	write_snapshot sess-old 99 "$((t - 100))" 90 "$((t - 100))"
+	run_sl "$(payload)"
+	assert_contains "lapsed rolling shows 0%" "$(plain_line 2)" "  0%"
+	assert_contains "lapsed rolling reset cell" "$(plain_line 2)" "--:--"
+	assert_not_contains "lapsed rolling is not n/a" "$(plain_line 2)" "n/a"
+	assert_not_contains "lapsed rolling has no burn warning" "$(plain_line 2)" "⚡"
+	assert_contains "lapsed weekly shows 0%" "$(plain_line 3)" "  0%"
+	assert_contains "lapsed weekly reset cell" "$(plain_line 3)" "--- --:--"
+	assert_not_contains "lapsed weekly has no burn warning" "$(plain_line 3)" "⚡"
+	assert_aligned "lapsed"
+}
+
+case_limits_absent_window() {
+	run_sl "$(payload)"
+	assert_contains "absent rolling" "$(plain_line 2)" "n/a"
+	assert_contains "absent weekly" "$(plain_line 3)" "n/a"
+}
+
+case_limits_payload_beats_lapsed_cache() {
+	local t
+	t=$(now)
+	write_snapshot sess-old 99 "$((t - 100))"
+	run_sl "$(limits_payload 33 "$((t + 3600))")"
+	assert_contains "live payload window wins over lapsed cache" "$(plain_line 2)" " 33%"
+}
+
+case_limits_corrupt_cache_file() {
+	local reset clean
+	reset=$(($(now) + 3600))
+	write_snapshot sess-good 26 "$reset"
+	run_sl "$(limits_payload 7 "$reset")"
+	clean="$OUT"
+	printf '{"five_hour":{"used_perc' >"$CACHE/sess-truncated.limits.json"
+	printf '5\n"text"\n[]\n{"five_hour":3}\n' >"$CACHE/sess-wrong-shape.limits.json"
+	run_sl "$(limits_payload 7 "$reset")"
+	assert_eq "corrupt files leave output unchanged" "$clean" "$OUT"
+	assert_empty_stderr "corrupt files"
+}
+
+case_limits_unusable_cache_dir() {
+	local reset good
+	reset=$(($(now) + 3600))
+	run_sl "$(limits_payload 7 "$reset")"
+	good="$OUT"
+	: >"$CASE_DIR/not-a-dir"
+	CACHE="$CASE_DIR/not-a-dir/cache"
+	run_sl "$(limits_payload 7 "$reset")"
+	assert_eq "unwritable cache dir degrades to the payload alone" "$good" "$OUT"
+	assert_empty_stderr "unwritable cache dir"
+}
+
+case_limits_missing_claude_dir() {
+	rmdir "$HOME_DIR/.claude"
+	run_sl "$(limits_payload 7 "$(($(now) + 3600))")"
+	assert_four_lines "missing ~/.claude"
+	assert_empty_stderr "missing ~/.claude (debug payload write)"
+}
+
+case_limits_float_percentage_is_floored() {
+	local reset
+	reset=$(($(now) + 3600))
+	write_snapshot sess-a 23 "$reset"
+	run_sl "$(limits_payload 23.5 "$reset")"
+	assert_contains "float percentage floors to match the cached integer" "$(plain_line 2)" " 23%"
+	assert_not_contains "float percentage floors to match the cached integer" "$(plain_line 2)" "24%"
+}
+
+case_limits_prunes_old_snapshots() {
+	local reset
+	reset=$(($(now) + 3600))
+	write_snapshot sess-stale 50 "$reset"
+	touch -t 202001010000 "$CACHE/sess-stale.limits.json"
+	run_sl "$(limits_payload 7 "$reset")"
+	[ ! -e "$CACHE/sess-stale.limits.json" ] && pass || fail "snapshot older than 8 days was not pruned"
+}
+
 # --- cases: runner ----------------------------------------------------------
 for case_fn in $(compgen -A function | grep '^case_'); do
 	fresh_sandbox
