@@ -14,14 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Syntax check
-        run: bash -n scripts/statusline.sh
-      - name: Shellcheck (warning severity and above)
-        run: shellcheck -S warning scripts/statusline.sh
-      - name: Smoke test
         run: |
-          out="$(echo '{"model":{"display_name":"Claude"}}' | scripts/statusline.sh)"
-          lines="$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
-          [ "$lines" -eq 4 ] || { echo "expected 4 output lines, got $lines"; exit 1; }
+          for f in scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh; do
+            bash -n "$f"
+          done
+      - name: Shellcheck (warning severity and above)
+        run: shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh
+      - name: Smoke tests
+        run: bash tests/smoke.sh
       - name: Plugin manifests are valid JSON
         run: |
           jq empty .claude-plugin/plugin.json
