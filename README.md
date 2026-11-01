@@ -3,18 +3,18 @@
 A 4-line ANSI dashboard statusline for [Claude Code](https://claude.com/claude-code):
 
 ```
-model   Sonnet 5 (high)   dir     Programming
-ctx     ●●●●●●●●●● 47%   rolling ●●●●●●●●●● 62% ↻11:25
-cache   ●●●●●●●●●● 85%   week    ●●●●●●●●●● 30% Sat 18:00
-lines   +214 -58
+model   Sonnet 5 (high)        dir     Programming #42 ✓
+ctx     ●●●●●●●●●●  47%        rolling ●●●●●●●●●●  62% ↻10:37
+cache   ●●●●●●●●●●  85% ◷50m   week    ●●●●●●●●●●  30% Mon 09:37
+lines   +214 -58               tokens  84.2k in · 12.1k out
 ```
 
 | Row | Left column | Right column |
 |---|---|---|
-| 1 | model + effort level | folder · git branch |
+| 1 | model + effort level | folder · git branch, then the open PR: `#42 ✓` approved, `✗` changes requested, `…` pending, `◌` draft (`!7` for a GitLab merge request); nothing when there is no open PR |
 | 2 | context-window meter | rolling 5h rate-limit meter + reset clock |
-| 3 | prompt-cache hit-rate meter | weekly rate-limit meter + weekday-clock reset (⚡ early-exhaustion warning when projected to hit 100% before reset) |
-| 4 | session line diff (+added/-removed) | |
+| 3 | prompt-cache hit-rate meter + `◷50m` time until the cache goes cold (red in its last 20% of the TTL) | weekly rate-limit meter + weekday-clock reset (⚡ early-exhaustion warning when projected to hit 100% before reset) |
+| 4 | session line diff (+added/-removed) | cumulative input/output tokens |
 
 Meters are dotted bars, gradient-colored by health (green → amber → red as
 usage climbs; the cache-hit meter inverts the scale since higher is better).
@@ -27,9 +27,8 @@ payload Claude Code already feeds the statusline command on stdin.
 - A 24-bit true-color terminal (iTerm2, Kitty, Alacritty, VS Code's integrated
   terminal, and most modern terminals all qualify) — the gradients use
   `\033[38;2;R;G;Bm` escapes, not the 256-color palette.
-- The 5h reset clock uses BSD `date -r <epoch>` (macOS-native). On Linux,
-  edit `fmt_clock()` in `scripts/statusline.sh` to use `date -d @<epoch>
-  '+%H:%M'` (GNU date) instead.
+- The reset clocks work on macOS and Linux with no setup: they try GNU `date -d @<epoch>` first and fall
+  back to BSD `date -r <epoch>`.
 
 ## Install
 
@@ -110,12 +109,22 @@ ANSI-colored lines. The last raw payload is cached at
 `~/.claude/statusline-last-payload.json` for debugging or discovering new
 fields Claude Code starts sending.
 
+Claude Code builds the rate-limit numbers from each session's own last API response, so a session
+that is idle would show frozen usage while other sessions keep spending. To keep the rolling and weekly
+meters current, every run also saves its limits to
+`${CLAUDE_CONFIG_DIR:-~/.claude}/statusline-cache/<session-id>.limits.json` (override the directory
+with `CC_STATUSLINE_CACHE_DIR`) and shows the freshest across all sessions: the newest window, and
+within it the highest usage. Once a window has reset and no session has used the new one yet, the meter
+shows 0% with `--:--` (`--- --:--` for the weekly meter) as reset time until fresh data arrives. Snapshots older than 8 days are deleted;
+if the directory is unusable the statusline silently falls back to its own session's numbers.
+`~/.claude/statusline-last-payload.json` is a debugging aid only: nothing reads it back.
+
 ## Development
 
 ```
-bash -n scripts/statusline.sh scripts/subagent-statusline.sh scripts/statusline-lib.sh
-shellcheck -S warning scripts/statusline.sh scripts/subagent-statusline.sh scripts/statusline-lib.sh
-echo '{"model":{"display_name":"Claude"}}' | scripts/statusline.sh          # main smoke test
+for f in scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh; do bash -n "$f"; done  # bash -n only parses its first file argument
+shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh
+bash tests/smoke.sh   # end-to-end cases for statusline.sh, each in a throwaway HOME and cache directory
 echo '{"tasks":[{"id":"t1","description":"agent","model":"claude-sonnet-5"}]}' | scripts/subagent-statusline.sh  # subagent smoke test
 ```
 

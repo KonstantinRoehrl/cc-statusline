@@ -13,18 +13,20 @@ and no package manager.
 
 ## Testing
 
-No test framework — verification is:
+No test framework; verification is the lint pair plus a plain-bash smoke script:
 
 ```
-bash -n scripts/statusline.sh
-shellcheck -S warning scripts/statusline.sh
-echo '<sample JSON payload>' | scripts/statusline.sh
+for f in scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh; do bash -n "$f"; done
+shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh
+bash tests/smoke.sh
 ```
 
 Info-level `SC2016` hits on the `j()` helper's single-quoted jq filters are
 intentional (the filters must not undergo bash expansion) — don't "fix"
 them by switching to double quotes. Lint at `-S warning` or higher, not the
 default severity.
+
+`tests/smoke.sh` runs the script end-to-end in a throwaway `HOME` with `CC_STATUSLINE_CACHE_DIR` pointed at a temp directory; add a `case_*` function there for every behavior change. `bash -n` parses only its first file argument, hence the loop.
 
 ## Constraints to respect
 
@@ -46,9 +48,8 @@ default severity.
   2026-07-25: bumping `plugin.json` version and running `claude plugin
   marketplace update` left the marketplace path unchanged while the cache
   path gained a brand-new version-numbered sibling directory.
-- `fmt_clock()` uses BSD `date -r <epoch>` (macOS). Any Linux compatibility
-  fix belongs behind a `date -r ... || date -d @...` fallback in the
-  script itself, not just a README note, if/when that's prioritized.
+- `fmt_clock()` and `fmt_weekday_clock()` try GNU `date -d @<epoch>` first and fall back to BSD
+  `date -r <epoch>`; keep both working.
 
 ## Release process
 
