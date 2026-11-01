@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+- feat(statusline): share rate limits across sessions, show cache countdown and PR review state (#11)
+
 ## 0.5.0
 
 - feat(statusline): redesign subagent row layout and fix payload parsing bugs (#9)
