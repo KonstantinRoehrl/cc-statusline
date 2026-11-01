@@ -226,6 +226,52 @@ case_limits_prunes_old_snapshots() {
 	[ ! -e "$CACHE/sess-stale.limits.json" ] && pass || fail "snapshot older than 8 days was not pruned"
 }
 
+# --- cases: prompt-cache countdown ------------------------------------------
+cache_payload() { # $1 seconds until expiry  [$2 ttl, omitted when empty] -> BASE_PAYLOAD with a warm prompt_cache
+	payload "$(jq -cn --argjson exp "$(($(now) + $1))" --arg ttl "${2:-}" \
+		'{prompt_cache: ({warm: true, caching_observed: true, expires_at: $exp} + (if $ttl == "" then {} else {ttl: $ttl} end))}')"
+}
+
+case_countdown_dim_when_plenty_left() {
+	run_sl "$(cache_payload 3090 1h)"
+	assert_contains "52m left" "$(plain_line 3)" "◷52m"
+	assert_contains "52m left is dim" "$(raw_line 3)" "${C_LABEL}◷52m"
+	assert_empty_stderr "52m left"
+	assert_aligned "52m left"
+}
+
+case_countdown_red_when_close_to_eviction() {
+	run_sl "$(cache_payload 300 1h)"
+	assert_contains "5m left of 1h" "$(raw_line 3)" "${C_RED}◷5m"
+	run_sl "$(cache_payload 50 5m)"
+	assert_contains "50s left of 5m" "$(raw_line 3)" "${C_RED}◷<1m"
+	assert_aligned "50s left"
+}
+
+case_countdown_unknown_ttl_turns_red_at_one_minute() {
+	run_sl "$(cache_payload 90)"
+	assert_contains "90s left, no ttl" "$(raw_line 3)" "${C_LABEL}◷2m"
+	run_sl "$(cache_payload 45)"
+	assert_contains "45s left, no ttl" "$(raw_line 3)" "${C_RED}◷<1m"
+}
+
+case_countdown_hidden_without_a_warm_cache() {
+	local t variant
+	t=$(now)
+	for variant in \
+		'{}' \
+		'{"prompt_cache":null}' \
+		'{"prompt_cache":{"warm":false,"caching_observed":true,"ttl":"1h","expires_at":9999999999}}' \
+		'{"prompt_cache":{"warm":true,"caching_observed":true,"ttl":"1h","expires_at":null}}' \
+		"$(jq -cn --argjson t "$t" '{prompt_cache: {warm: true, caching_observed: true, ttl: "1h", expires_at: ($t - 5)}}')" \
+		"$(jq -cn --argjson t "$t" '{prompt_cache: {warm: true, caching_observed: false, ttl: "1h", expires_at: ($t + 3000)}}')"; do
+		run_sl "$(payload "$variant")"
+		assert_not_contains "no countdown for $variant" "$(plain_line 3)" "◷"
+		assert_empty_stderr "no countdown for $variant"
+		assert_aligned "no countdown for $variant"
+	done
+}
+
 # --- cases: runner ----------------------------------------------------------
 for case_fn in $(compgen -A function | grep '^case_'); do
 	fresh_sandbox
