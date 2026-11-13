@@ -15,17 +15,31 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Syntax check
         run: |
-          for f in scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh; do
+          for f in scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh; do
             bash -n "$f"
           done
       - name: Shellcheck (warning severity and above)
-        run: shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh
+        run: shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh
       - name: Smoke tests
         run: bash tests/smoke.sh
       - name: Plugin manifests are valid JSON
         run: |
           jq empty .claude-plugin/plugin.json
           jq empty .claude-plugin/marketplace.json
+  mod:
+    runs-on: ubuntu-latest
+    env:
+      # Pinned on purpose. Dependabot cannot see an npm install inside a workflow, so bump this
+      # by hand when the mod API moves (it is early access and changes between releases).
+      CLAUDE_CODE_VERSION: 2.1.323
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the Claude Code CLI at the pinned version
+        run: npm install --global "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+      - name: Validate the plugin manifest and the subagent band mod
+        run: claude plugin validate .
+      - name: Run the subagent band mod tests
+        run: claude plugin test .
   pr-title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

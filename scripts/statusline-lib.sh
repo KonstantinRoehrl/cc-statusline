@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # cc-statusline shared library — color constants, gradient engine, meter primitives.
-# Sourced by statusline.sh and subagent-statusline.sh; not executed directly.
+# Sourced by statusline.sh; not executed directly.
 
 # Color constants below are consumed by the sourcing scripts, not this file, so
 # their use is invisible here — SC2034 is expected and suppressed file-wide.
