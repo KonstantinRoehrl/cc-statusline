@@ -1,6 +1,6 @@
 # cc-statusline
 
-A Claude Code plugin distributing one file: `scripts/statusline.sh`. Global
+A Claude Code plugin distributing a statusline script (`scripts/statusline.sh`) and a subagent-band mod (`hooks/`). Global
 conventions (Conventional Commits, branch discipline, CI hardening, etc.)
 apply as-is — see the global CLAUDE.md. This file covers only what's
 specific to this repo.
@@ -8,17 +8,19 @@ specific to this repo.
 ## What this repo is
 
 Not an application — a plugin manifest (`.claude-plugin/plugin.json` +
-`marketplace.json`) wrapping a single bash script. There is no build step
+`marketplace.json`) wrapping one bash script and one TypeScript mod (`hooks/register.tsx`, loaded by Claude Code from source). There is no build step
 and no package manager.
 
 ## Testing
 
-No test framework; verification is the lint pair plus a plain-bash smoke script:
+No test framework; verification is the lint pair, a plain-bash smoke script, and the mod's own checks:
 
 ```
-for f in scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh; do bash -n "$f"; done
-shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh
+for f in scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh; do bash -n "$f"; done
+shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh
 bash tests/smoke.sh
+HOME="$(mktemp -d)" claude plugin validate .
+HOME="$(mktemp -d)" claude plugin test .
 ```
 
 Info-level `SC2016` hits on the `j()` helper's single-quoted jq filters are
@@ -50,6 +52,10 @@ default severity.
   path gained a brand-new version-numbered sibling directory.
 - `fmt_clock()` and `fmt_weekday_clock()` try GNU `date -d @<epoch>` first and fall back to BSD
   `date -r <epoch>`; keep both working.
+- The mod's state atoms and the `types/index.d.ts` key must use the `plugin.json` name (`cc-statusline`) as
+  their plugin id, or the engine denies the write. tsc runs locally only (CI cannot generate the engine's
+  type file); `claude plugin validate`/`test` run in CI's `mod` job, pinned to one Claude Code version in
+  `validate.yml` that Dependabot cannot bump.
 
 ## Release process
 

@@ -66,38 +66,29 @@ place, so the statusline picks up changes without you touching
 `settings.json` again. Start a new session (or run `/statusline`) to pick up
 the initial change.
 
-## Subagent status line
+## Subagent band
 
-`scripts/subagent-statusline.sh` renders a compact row for each active subagent: the model it
-resolved to (with its effort level when set — a subagent's effort can differ from the
-orchestrator's) and its context-window usage lead the row as separate segments, followed by its
-task description (Claude Code doesn't send override scripts a subagent role/type name, e.g.
-"general-purpose" or "Explore" — only a generic constant — so description is the closest
-stand-in), with raw token consumption trailing at the end. Per-subagent cache-hit rate isn't
-offered: Claude Code only tracks a single rolling token count per subagent internally, with no
-cache-read/cache-creation/input breakdown to compute a hit rate from.
+The plugin ships a small Claude Code mod that draws one row per subagent above the prompt, in the
+format the retired subagent status line used: the model it resolved to (with its effort level when
+set), its context-window usage, its task description, and its token count.
 
 ```
-Sonnet-5 · ctx 15% · Review fix-5-2 F2 test · 40.8k tok
-Opus-4.8 (high) · ctx 42% · Trivial subagent for statusline test · 1.2k tok
+Sonnet-5 · ctx 4% · Review fix-5-2 F2 test · 40.8k tok
+Opus-4.8 (high) · ctx 42% · Trivial subagent for statusline test · 420.0k tok
 ```
 
-It is wired via Claude Code's separate **`subagentStatusLine`** setting, which — like `statusLine` —
-is a user-level preference a plugin cannot set for you. It requires **Claude Code v2.1.205+** (the
-release that added the subagent `model` field). Merge this into `~/.claude/settings.json`:
+Installing the plugin is the whole setup: there is nothing to add to `settings.json`. The mod is early
+access in Claude Code and was written against **Claude Code v2.1.323**. Details:
 
-```json
-{
-  "subagentStatusLine": {
-    "type": "command",
-    "command": "~/.claude/plugins/marketplaces/cc-statusline/scripts/subagent-statusline.sh"
-  }
-}
-```
+- `tok` is the subagent's latest response size (input, cache and output tokens). `ctx NN%` is that over the
+  context window, and appears only when the subagent runs the same model as the main session, whose
+  window is known; otherwise the row simply has no `ctx` segment.
+- Finished subagents keep their row for as long as Claude Code lists them.
+- The built-in agent panel still shows subagents too: mods cannot restyle it, so they appear twice.
+- Per-subagent cache-hit rate is not shown, as before.
 
-The same marketplace-clone path rules as the main statusline apply (see Install above): point at the
-clone, not the versioned cache or `${CLAUDE_PLUGIN_ROOT}`. The last raw subagent payload is cached
-at `~/.claude/subagent-statusline-last-payload.json` for debugging.
+Claude Code v2.1.323 removed the `subagentStatusLine` setting, so the old `scripts/subagent-statusline.sh`
+is gone. If you wired it in `~/.claude/settings.json`, delete that key; it no longer has any effect.
 
 ## How it works
 
@@ -121,12 +112,15 @@ if the directory is unusable the statusline silently falls back to its own sessi
 
 ## Development
 
-```
-for f in scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh; do bash -n "$f"; done  # bash -n only parses its first file argument
-shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh scripts/subagent-statusline.sh tests/smoke.sh
+```bash
+for f in scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh; do bash -n "$f"; done  # bash -n only parses its first file argument
+shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh
 bash tests/smoke.sh   # end-to-end cases for statusline.sh, each in a throwaway HOME and cache directory
-echo '{"tasks":[{"id":"t1","description":"agent","model":"claude-sonnet-5"}]}' | scripts/subagent-statusline.sh  # subagent smoke test
+HOME="$(mktemp -d)" claude plugin validate .   # manifest and subagent band mod checks
+HOME="$(mktemp -d)" claude plugin test .       # hooks/*.test.ts(x); needs Claude Code on PATH
 ```
+
+Type-checking the mod with tsc needs the type definitions Claude Code writes to .claude-plugin/types/ when a session loads the mod from a folder (claude --plugin-dir .); that folder is gitignored and CI does not run tsc.
 
 ## Releases
 
