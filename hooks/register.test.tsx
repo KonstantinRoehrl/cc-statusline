@@ -107,3 +107,44 @@ test('one row per agent, finished ones included, fed by turn.step', async ($, on
   expect(texts).toContain('Haiku-4.5 · task a2 · 40.8k tok')
   await ui.unmount()
 })
+
+test('forgets what it knew about an agent once the list drops it', async ($, on) => {
+  let agents: AgentInfo[] = [agent('a1'), agent('a2')]
+  on('agent.list', () => ({ value: agents }))
+  on('session.usage', () => ({
+    value: { startedAt: 0, context: { window: 1000000 }, rateLimits: [] },
+  }))
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  on('turn.step', async function* (_, e) {
+    yield stop(USAGE)
+    return {
+      turnId: e.turnId,
+      index: e.index,
+      answer: '',
+      toolUses: [],
+      stopReason: 'end_turn' as const,
+      usage: USAGE,
+    }
+  })
+
+  const step = (agentId: string) =>
+    $.turn.step({ turnId: 't', index: 0, model: 'claude-opus-4-8', messageCount: 1, agentId })
+  for await (const _ of step('a2')) void _
+
+  const rowsOf = async () => {
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    const texts = (await ui.findAll({ type: 'Text' })).map(r => r.text)
+    await ui.unmount()
+    return texts
+  }
+  expect(await rowsOf()).toContain('Opus-4.8 · task a2 · 40.8k tok')
+
+  agents = [agent('a1')]
+  for await (const _ of step('a1')) void _
+
+  agents = [agent('a1'), agent('a2')]
+  expect(await rowsOf()).toContain('— · task a2')
+})

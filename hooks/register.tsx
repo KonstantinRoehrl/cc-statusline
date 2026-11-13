@@ -20,8 +20,11 @@ export const register: Register = on => {
       }
     } else {
       const effort = typeof e.effort === 'string' ? e.effort : undefined
+      // Drawing is pure (state writes are denied in ui.render), so records of agents the list
+      // has dropped are pruned here, when the next subagent step is recorded.
+      const listed = new Set((await $.agent.list()).map(a => a.id))
       await update($, records, all => ({
-        ...all,
+        ...Object.fromEntries(Object.entries(all).filter(([id]) => listed.has(id))),
         [agentId]: { ...all[agentId], model: e.model, effort },
       }))
     }
