@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0
+
+- feat(statusline)!: replace the subagent statusline script with a subagent band mod (#14)
+
 ## 0.6.0
 
 - feat(statusline): share rate limits across sessions, show cache countdown and PR review state (#11)
