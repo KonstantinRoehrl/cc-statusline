@@ -66,29 +66,32 @@ place, so the statusline picks up changes without you touching
 `settings.json` again. Start a new session (or run `/statusline`) to pick up
 the initial change.
 
-## Subagent band
+## Agent panel rows
 
-The plugin ships a small Claude Code mod that draws one row per subagent above the prompt, in the
-format the retired subagent status line used: the model it resolved to (with its effort level when
-set), its context-window usage, its task description, and its token count.
+The plugin ships a small Claude Code mod that restyles the rows of Claude Code's built-in agent panel,
+for subagents and teammates, in the format the original subagent status line used: the model the agent
+runs on (with its effort level when known), its context-window usage, its task description, and its
+token count. Each agent appears once, in the panel.
 
 ```
-Sonnet-5 · ctx 4% · Review fix-5-2 F2 test · 40.8k tok
 Opus-4.8 (high) · ctx 42% · Trivial subagent for statusline test · 420.0k tok
+— · researcher · 0 tok
 ```
 
 Installing the plugin is the whole setup: there is nothing to add to `settings.json`. The mod is early
-access in Claude Code and was written against **Claude Code v2.1.323**. Details:
+access in Claude Code and was written against **Claude Code v2.1.327**. Details:
 
-- `tok` is the subagent's latest response size (input, cache and output tokens). `ctx NN%` is that over the
-  context window, and appears only when the subagent runs the same model as the main session, whose
-  window is known; otherwise the row simply has no `ctx` segment.
-- Finished subagents keep their row for as long as Claude Code lists them.
-- The built-in agent panel still shows subagents too: mods cannot restyle it, so they appear twice.
+- `tok` is the agent's token count as Claude Code reports it: its latest request's input plus all its
+  output. `ctx NN%` is that over the agent's context window, and appears whenever the window is known.
+- The effort shown is the level set for the agent, else the one its last request carried; with neither,
+  the row has no parentheses.
+- A teammate running in a terminal pane of its own has no model Claude Code can report, so its row shows
+  `—` in place of the model.
 - Per-subagent cache-hit rate is not shown, as before.
 
-Claude Code v2.1.323 removed the `subagentStatusLine` setting, so the old `scripts/subagent-statusline.sh`
-is gone. If you wired it in `~/.claude/settings.json`, delete that key; it no longer has any effect.
+If `subagentStatusLine` is set in `~/.claude/settings.json`, a command that prints a row takes precedence
+over the mod's row. If it still points at the `scripts/subagent-statusline.sh` that v1.0.0 removed,
+delete that key: the mod draws the row either way, but Claude Code keeps running the missing command.
 
 ## How it works
 
@@ -116,7 +119,7 @@ if the directory is unusable the statusline silently falls back to its own sessi
 for f in scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh; do bash -n "$f"; done  # bash -n only parses its first file argument
 shellcheck -S warning scripts/statusline.sh scripts/statusline-lib.sh tests/smoke.sh
 bash tests/smoke.sh   # end-to-end cases for statusline.sh, each in a throwaway HOME and cache directory
-HOME="$(mktemp -d)" claude plugin validate .   # manifest and subagent band mod checks
+HOME="$(mktemp -d)" claude plugin validate .   # manifest and agent row mod checks
 HOME="$(mktemp -d)" claude plugin test .       # hooks/*.test.ts(x); needs Claude Code on PATH
 ```
 

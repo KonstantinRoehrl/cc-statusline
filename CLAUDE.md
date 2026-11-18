@@ -1,6 +1,6 @@
 # cc-statusline
 
-A Claude Code plugin distributing a statusline script (`scripts/statusline.sh`) and a subagent-band mod (`hooks/`). Global
+A Claude Code plugin distributing a statusline script (`scripts/statusline.sh`) and an agent-row mod (`hooks/`) that restyles Claude Code's built-in agent panel. Global
 conventions (Conventional Commits, branch discipline, CI hardening, etc.)
 apply as-is — see the global CLAUDE.md. This file covers only what's
 specific to this repo.
@@ -52,10 +52,9 @@ default severity.
   path gained a brand-new version-numbered sibling directory.
 - `fmt_clock()` and `fmt_weekday_clock()` try GNU `date -d @<epoch>` first and fall back to BSD
   `date -r <epoch>`; keep both working.
-- The mod's state atoms and the `types/index.d.ts` key must use the `plugin.json` name (`cc-statusline`) as
-  their plugin id, or the engine denies the write. tsc runs locally only (CI cannot generate the engine's
-  type file); `claude plugin validate`/`test` run in CI's `mod` job, pinned to one Claude Code version in
-  `validate.yml` that Dependabot cannot bump.
+- The mod keeps no state, so it has no `$.state` contract. tsc runs locally only (CI cannot generate the
+  engine's type file); `claude plugin validate`/`test` run in CI's `mod` job, pinned to one Claude Code
+  version in `validate.yml` that Dependabot cannot bump.
 
 ## Release process
 
