@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- fix(statusline): restyle the agent panel through an AgentRow mod (#17)
+
 ## 1.0.0
 
 - feat(statusline)!: replace the subagent statusline script with a subagent band mod (#14)
